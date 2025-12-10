@@ -9,6 +9,7 @@ import { AllManagedWatchedData, Rating, ManagedWatchedItem, TMDbSearchResult, Me
 import { addWatchedItem, removeWatchedItem, updateWatchedItem } from '@/lib/firestore';
 import { WatchlistContext } from './WatchlistContext';
 import { getTMDbDetails, getProviders } from '@/lib/tmdb';
+import { useAuth } from './AuthContext';
 
 const initialData: AllManagedWatchedData = {
     amei: [], gostei: [], meh: [], naoGostei: []
@@ -25,19 +26,26 @@ interface IWatchedDataContext {
 export const WatchedDataContext = createContext<IWatchedDataContext>({
     data: initialData,
     loading: false,
-    addItem: async () => {},
-    removeItem: async () => {},
-    updateItem: async () => {},
+    addItem: async () => { },
+    removeItem: async () => { },
+    updateItem: async () => { },
 });
 
 export const WatchedDataProvider = ({ children }: { children: React.ReactNode }) => {
     const [data, setData] = useState<AllManagedWatchedData>(initialData);
     const [loading, setLoading] = useState(true);
     const { removeFromWatchlist } = useContext(WatchlistContext);
+    const { user } = useAuth();
 
     useEffect(() => {
+        if (!user) {
+            setData(initialData);
+            setLoading(false);
+            return;
+        }
+
         setLoading(true);
-        const collectionRef = collection(db, 'watchedItems');
+        const collectionRef = collection(db, 'users', user.uid, 'watchedItems');
         const unsubscribe = onSnapshot(collectionRef, (querySnapshot) => {
             const items: ManagedWatchedItem[] = [];
             querySnapshot.forEach((doc) => {
@@ -53,7 +61,7 @@ export const WatchedDataProvider = ({ children }: { children: React.ReactNode })
                 const ratingKey = key as Rating;
                 groupedData[ratingKey].sort((a, b) => b.createdAt - a.createdAt);
             });
-            
+
             setData(groupedData);
             setLoading(false);
 
@@ -62,9 +70,13 @@ export const WatchedDataProvider = ({ children }: { children: React.ReactNode })
             setLoading(false);
         });
         return () => unsubscribe();
-    }, []);
-    
+    }, [user]);
+
     const addItem = useCallback(async (item: TMDbSearchResult | null, rating: Rating) => {
+        if (!user) {
+            throw new Error("Usuário não está autenticado");
+        }
+
         setLoading(true);
         try {
             if (!item || !item.id) {
@@ -72,7 +84,7 @@ export const WatchedDataProvider = ({ children }: { children: React.ReactNode })
             }
 
             const details = await getTMDbDetails(item.id, item.media_type as 'movie' | 'tv');
-            
+
             let mediaType: MediaType = 'Filme';
             let titleWithYear = '';
 
@@ -85,9 +97,8 @@ export const WatchedDataProvider = ({ children }: { children: React.ReactNode })
                 titleWithYear = `${details.title} (${details.release_date ? new Date(details.release_date).getFullYear() : 'N/A'})`;
             }
 
-            // A CORREÇÃO ESTÁ AQUI:
             const providers = getProviders(details);
-            
+
             const newItem: ManagedWatchedItem = {
                 id: details.id,
                 tmdbMediaType: item.media_type as 'movie' | 'tv',
@@ -99,13 +110,13 @@ export const WatchedDataProvider = ({ children }: { children: React.ReactNode })
                 voteAverage: details.vote_average ? parseFloat(details.vote_average.toFixed(1)) : 0,
                 watchProviders: {
                     link: providers?.link || '',
-                    flatrate: providers?.flatrate || [], // Garante que flatrate nunca será undefined
+                    flatrate: providers?.flatrate || [],
                 },
                 rating,
                 createdAt: Date.now(),
             };
 
-            await addWatchedItem(newItem);
+            await addWatchedItem(user.uid, newItem);
             removeFromWatchlist(newItem.id);
 
         } catch (e) {
@@ -114,24 +125,26 @@ export const WatchedDataProvider = ({ children }: { children: React.ReactNode })
         } finally {
             setLoading(false);
         }
-    }, [removeFromWatchlist]);
-    
+    }, [removeFromWatchlist, user]);
+
     const removeItem = useCallback(async (id: number) => {
+        if (!user) return;
         try {
-            await removeWatchedItem(id);
+            await removeWatchedItem(user.uid, id);
         } catch (error) {
             console.error("Falha ao remover item:", error);
         }
-    }, []);
+    }, [user]);
 
     const updateItem = useCallback(async (updatedItem: ManagedWatchedItem) => {
+        if (!user) return;
         try {
             const { id, ...dataToUpdate } = updatedItem;
-            await updateWatchedItem(id, dataToUpdate);
+            await updateWatchedItem(user.uid, id, dataToUpdate);
         } catch (error) {
             console.error("Falha ao atualizar item:", error);
         }
-    }, []);
+    }, [user]);
 
     return (
         <WatchedDataContext.Provider value={{ data, loading, addItem, removeItem, updateItem }}>

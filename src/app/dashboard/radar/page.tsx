@@ -3,11 +3,12 @@
 "use client";
 
 import React, { useState, useContext, useEffect, useMemo } from 'react';
-import { onSnapshot } from 'firebase/firestore';
+import { collection, onSnapshot } from 'firebase/firestore';
+import { db } from '@/lib/firebase/client';
 import { WatchedDataContext } from '@/contexts/WatchedDataContext';
 import { WatchlistContext } from '@/contexts/WatchlistContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { RadarItem, WatchlistItem, DisplayableItem } from '@/types';
-import { relevantReleasesCollection, tmdbRadarCacheCollection } from '@/lib/firestore';
 import DetailsModal from '@/components/shared/DetailsModal';
 import Image from 'next/image';
 
@@ -43,8 +44,8 @@ const CarouselCard: React.FC<CarouselCardProps> = ({ item, onClick, rank }) => {
     return (
         <div onClick={onClick} className="flex-shrink-0 w-40 cursor-pointer group">
             <div className="relative overflow-hidden rounded-lg shadow-lg">
-                {rank && (<div className="absolute -left-1 -top-1 z-10"><svg width="60" height="60" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M0 0 H 60 L 0 60 V 0 Z" fill="#111827" fillOpacity="0.7"/><text x="10" y="25" fontFamily="Arial, sans-serif" fontSize="20" fontWeight="bold" fill="white">{rank}</text></svg></div>)}
-                <Image src={item.posterUrl || 'https://placehold.co/400x600/374151/9ca3af?text=?'} alt={`Pôster de ${item.title}`} width={400} height={600} className="w-full h-60 object-cover transition-transform duration-300 group-hover:scale-105"/>
+                {rank && (<div className="absolute -left-1 -top-1 z-10"><svg width="60" height="60" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M0 0 H 60 L 0 60 V 0 Z" fill="#111827" fillOpacity="0.7" /><text x="10" y="25" fontFamily="Arial, sans-serif" fontSize="20" fontWeight="bold" fill="white">{rank}</text></svg></div>)}
+                <Image src={item.posterUrl || 'https://placehold.co/400x600/374151/9ca3af?text=?'} alt={`Pôster de ${item.title}`} width={400} height={600} className="w-full h-60 object-cover transition-transform duration-300 group-hover:scale-105" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
             </div>
             <h3 className="text-white font-bold mt-2 truncate">{item.title}</h3>
@@ -73,6 +74,7 @@ const Carousel: React.FC<CarouselProps> = ({ title, items, onItemClick, isRanked
 export default function RadarPage() {
     const { data } = useContext(WatchedDataContext);
     const { addToWatchlist, isInWatchlist } = useContext(WatchlistContext);
+    const { user } = useAuth();
     const [isRelevantLoading, setIsRelevantLoading] = useState(true);
     const [isLoading, setIsLoading] = useState(true);
     const [tmdbCache, setTmdbCache] = useState<RadarItem[]>([]);
@@ -81,54 +83,68 @@ export default function RadarPage() {
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        // As chamadas de atualização do radar (`update...IfNeeded`) foram removidas daqui.
-        // A página agora é responsável apenas por LER os dados. 
-        // A atualização será feita por um Cron Job no servidor (na Fase 3 da migração).
-
-        const unsubTMDb = onSnapshot(tmdbRadarCacheCollection, (snapshot) => {
-            const items: RadarItem[] = [];
-            snapshot.forEach(doc => items.push(doc.data() as RadarItem));
-            setTmdbCache(items);
+        if (!user) {
             setIsLoading(false);
-        }, err => {
-            console.error("Erro ao ouvir o cache do TMDb:", err);
-            setError("Não foi possível carregar os dados do Radar.");
-            setIsLoading(false);
-        });
-
-        const unsubRelevant = onSnapshot(relevantReleasesCollection, (snapshot) => {
-            const items: RadarItem[] = [];
-            snapshot.forEach(doc => items.push(doc.data() as RadarItem));
-            setRelevantReleases(items);
             setIsRelevantLoading(false);
-        });
+            setError("Você precisa estar logado para ver o radar.");
+            return;
+        }
+
+        const unsubTMDb = onSnapshot(
+            collection(db, 'users', user.uid, 'tmdbRadarCache'),
+            (snapshot) => {
+                const items: RadarItem[] = [];
+                snapshot.forEach(doc => items.push(doc.data() as RadarItem));
+                setTmdbCache(items);
+                setIsLoading(false);
+            },
+            err => {
+                console.error("Erro ao ouvir o cache do TMDb:", err);
+                setError("Não foi possível carregar os dados do Radar.");
+                setIsLoading(false);
+            }
+        );
+
+        const unsubRelevant = onSnapshot(
+            collection(db, 'users', user.uid, 'relevantReleases'),
+            (snapshot) => {
+                const items: RadarItem[] = [];
+                snapshot.forEach(doc => items.push(doc.data() as RadarItem));
+                setRelevantReleases(items);
+                setIsRelevantLoading(false);
+            },
+            err => {
+                console.error("Erro ao ouvir relevantes:", err);
+                setIsRelevantLoading(false);
+            }
+        );
 
         return () => {
             unsubTMDb();
             unsubRelevant();
         };
-    }, []);
-    
+    }, [user]);
+
     const handleAddToWatchlist = (item: DisplayableItem) => {
-        const watchlistItem: WatchlistItem = { id: item.id, tmdbMediaType: item.tmdbMediaType, title: item.title, posterUrl: item.posterUrl, addedAt: Date.now() };
+        const watchlistItem: WatchlistItem = { id: item.id, tmdbMediaType: item.tmdbMediaType, title: item.title || '', posterUrl: item.posterUrl, addedAt: Date.now() };
         addToWatchlist(watchlistItem);
         setSelectedItem(null);
     };
-    
+
     const renderDetailsModalActions = () => {
         if (!selectedItem) return null;
         const isItemInWatchlist = isInWatchlist(selectedItem.id);
         return (
             <>
-                <button 
-                    onClick={() => handleAddToWatchlist(selectedItem)} 
-                    disabled={isItemInWatchlist} 
+                <button
+                    onClick={() => handleAddToWatchlist(selectedItem)}
+                    disabled={isItemInWatchlist}
                     className="w-full sm:w-auto flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg disabled:bg-gray-600 disabled:cursor-not-allowed"
                 >
                     {isItemInWatchlist ? 'Já está na Watchlist' : 'Adicionar à Watchlist'}
                 </button>
-                <button 
-                    onClick={() => setSelectedItem(null)} 
+                <button
+                    onClick={() => setSelectedItem(null)}
                     className="w-full sm:w-auto flex-1 bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-lg"
                 >
                     Fechar
@@ -137,20 +153,20 @@ export default function RadarPage() {
         );
     };
 
-    const nowPlaying = useMemo(() => tmdbCache.filter(r => r.listType === 'now_playing').sort((a,b) => new Date(b.releaseDate).getTime() - new Date(a.releaseDate).getTime()), [tmdbCache]);
+    const nowPlaying = useMemo(() => tmdbCache.filter(r => r.listType === 'now_playing').sort((a, b) => new Date(b.releaseDate).getTime() - new Date(a.releaseDate).getTime()), [tmdbCache]);
     const trending = useMemo(() => tmdbCache.filter(r => r.listType === 'trending'), [tmdbCache]);
     const topNetflix = useMemo(() => tmdbCache.filter(r => r.providerId === 8), [tmdbCache]);
     const topPrime = useMemo(() => tmdbCache.filter(r => r.providerId === 119), [tmdbCache]);
     const topMax = useMemo(() => tmdbCache.filter(r => r.providerId === 1899), [tmdbCache]);
     const topDisney = useMemo(() => tmdbCache.filter(r => r.providerId === 337), [tmdbCache]);
-    const upcoming = useMemo(() => relevantReleases.sort((a,b) => new Date(a.releaseDate).getTime() - new Date(b.releaseDate).getTime()), [relevantReleases]);
+    const upcoming = useMemo(() => relevantReleases.sort((a, b) => new Date(a.releaseDate).getTime() - new Date(b.releaseDate).getTime()), [relevantReleases]);
 
     return (
         <div className="p-4">
             {selectedItem && (
-                <DetailsModal 
-                    item={selectedItem} 
-                    onClose={() => setSelectedItem(null)} 
+                <DetailsModal
+                    item={selectedItem}
+                    onClose={() => setSelectedItem(null)}
                     actions={renderDetailsModalActions()}
                 />
             )}

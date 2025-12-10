@@ -2,7 +2,8 @@
 
 import { NextResponse } from 'next/server';
 import { getWatchedItems } from '@/lib/firestore';
-import { updateTMDbRadarCache, updateRelevantReleases } from '@/lib/radar';
+import { updateTMDbRadarCache } from '@/lib/radar';
+// import { updateRelevantReleases } from '@/lib/radar'; // TODO: Function doesn't exist
 import { updateWeeklyRelevantsIfNeeded } from '@/lib/weeklyRelevants';
 import { generateNewWeeklyChallenge } from '@/lib/challenge';
 import { AllManagedWatchedData } from '@/types';
@@ -33,7 +34,7 @@ export async function GET(request: Request) {
             meh: watchedItems.filter(i => i.rating === 'meh'),
             naoGostei: watchedItems.filter(i => i.rating === 'naoGostei'),
         };
-        tasksToRun.push(generateNewWeeklyChallenge(watchedData).then(() => {}));
+        tasksToRun.push(generateNewWeeklyChallenge(watchedData).then(() => { }));
         tasksSummary.push("Desafio Semanal");
 
     } else if (dayOfWeek === 1) { // Segunda-feira
@@ -48,11 +49,11 @@ export async function GET(request: Request) {
         tasksToRun.push(updateWeeklyRelevantsIfNeeded(watchedData));
         tasksSummary.push("Relevantes da Semana");
 
-    } else if (dayOfWeek === 2) { // Terça-feira
+    } /* else if (dayOfWeek === 2) { // Terça-feira - DISABLED: function doesn't exist
         console.log("CRON: Hoje é Terça, executando tarefa do Radar Relevante (IA).");
         tasksToRun.push(updateRelevantReleases());
         tasksSummary.push("Radar Relevante (IA)");
-    }
+    } */
 
     try {
         console.log(`CRON: Executando as seguintes tarefas: ${tasksSummary.join(', ')}`);

@@ -3,10 +3,9 @@
 "use client";
 
 import React, { useState, useEffect, useContext } from 'react';
-import { onSnapshot, doc } from 'firebase/firestore';
+import { onSnapshot, doc, collection } from 'firebase/firestore';
 import { WeeklyRelevants, WeeklyRelevantCategory, WeeklyRelevantItem, WatchlistItem, DisplayableItem } from '@/types';
-// A MUDANÇA ESTÁ AQUI:
-import { weeklyRelevantsCollection } from '@/lib/firestore';
+import { db } from '@/lib/firebase/client';
 import { WatchlistContext } from '@/contexts/WatchlistContext';
 import DetailsModal from '@/components/shared/DetailsModal';
 import Image from 'next/image';
@@ -40,7 +39,7 @@ const LoadingState = () => (
 const CarouselCard: React.FC<{ item: WeeklyRelevantItem; onClick: (item: WeeklyRelevantItem) => void; }> = ({ item, onClick }) => (
     <div onClick={() => onClick(item)} className="flex-shrink-0 w-40 cursor-pointer group">
         <div className="relative overflow-hidden rounded-lg shadow-lg">
-            <Image src={item.posterUrl || 'https://placehold.co/400x600/374151/9ca3af?text=?'} alt={`Pôster de ${item.title}`} width={400} height={600} className="w-full h-60 object-cover transition-transform duration-300 group-hover:scale-105"/>
+            <Image src={item.posterUrl || 'https://placehold.co/400x600/374151/9ca3af?text=?'} alt={`Pôster de ${item.title}`} width={400} height={600} className="w-full h-60 object-cover transition-transform duration-300 group-hover:scale-105" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div>
             <div className="absolute inset-0 p-3 bg-black/70 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center text-center">
                 <p className="text-white text-xs italic">&quot;{item.reason}&quot;</p>
@@ -69,7 +68,7 @@ export default function WeeklyRelevantsPage() {
     const [selectedItem, setSelectedItem] = useState<DisplayableItem | null>(null);
 
     useEffect(() => {
-        const docRef = doc(weeklyRelevantsCollection, 'currentList');
+        const docRef = doc(collection(db, 'weeklyRelevants'), 'currentList');
         const unsubscribe = onSnapshot(docRef, (docSnap) => {
             if (docSnap.exists()) {
                 setWeeklyData(docSnap.data() as WeeklyRelevants);
@@ -113,15 +112,15 @@ export default function WeeklyRelevantsPage() {
 
         return (
             <>
-                <button 
-                    onClick={() => handleAddToWatchlist(selectedItem)} 
-                    disabled={isItemInWatchlist} 
+                <button
+                    onClick={() => handleAddToWatchlist(selectedItem)}
+                    disabled={isItemInWatchlist}
                     className="w-full sm:w-auto flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg disabled:bg-gray-600 disabled:cursor-not-allowed"
                 >
                     {isItemInWatchlist ? 'Já está na Watchlist' : 'Adicionar à Watchlist'}
                 </button>
-                <button 
-                    onClick={() => setSelectedItem(null)} 
+                <button
+                    onClick={() => setSelectedItem(null)}
                     className="w-full sm:w-auto flex-1 bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-lg"
                 >
                     Fechar
@@ -150,7 +149,7 @@ export default function WeeklyRelevantsPage() {
     return (
         <div className="p-4">
             {selectedItem && (
-                <DetailsModal 
+                <DetailsModal
                     item={selectedItem}
                     onClose={() => setSelectedItem(null)}
                     actions={renderDetailsModalActions()}

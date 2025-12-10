@@ -2,11 +2,12 @@
 
 "use client"; // ESSENCIAL: Isso marca o componente como um "Client Component"
 
-import React, { createContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useState, useEffect, useCallback, useContext } from 'react';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client'; // Caminho corrigido para a config do cliente
 import { WatchlistItem } from '@/types'; // Caminho corrigido para os tipos
 import { addToWatchlist, removeFromWatchlist } from '@/lib/firestore';
+import { useAuth } from './AuthContext';
 
 interface IWatchlistContext {
     watchlist: WatchlistItem[];
@@ -17,16 +18,22 @@ interface IWatchlistContext {
 
 export const WatchlistContext = createContext<IWatchlistContext>({
     watchlist: [],
-    addToWatchlist: async () => {},
-    removeFromWatchlist: async () => {},
+    addToWatchlist: async () => { },
+    removeFromWatchlist: async () => { },
     isInWatchlist: () => false,
 });
 
 export const WatchlistProvider = ({ children }: { children: React.ReactNode }) => {
     const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
+    const { user } = useAuth();
 
     useEffect(() => {
-        const collectionRef = collection(db, 'watchlist');
+        if (!user) {
+            setWatchlist([]);
+            return;
+        }
+
+        const collectionRef = collection(db, 'users', user.uid, 'watchlist');
         const unsubscribe = onSnapshot(collectionRef, (querySnapshot) => {
             const items: WatchlistItem[] = [];
             querySnapshot.forEach((doc) => {
@@ -36,23 +43,25 @@ export const WatchlistProvider = ({ children }: { children: React.ReactNode }) =
         });
 
         return () => unsubscribe();
-    }, []);
+    }, [user]);
 
     const handleAddItem = useCallback(async (item: WatchlistItem) => {
+        if (!user) return;
         try {
-            await addToWatchlist(item);
+            await addToWatchlist(user.uid, item);
         } catch (error) {
             console.error("Failed to add to watchlist:", error);
         }
-    }, []);
+    }, [user]);
 
     const handleRemoveItem = useCallback(async (id: number) => {
+        if (!user) return;
         try {
-            await removeFromWatchlist(id);
+            await removeFromWatchlist(user.uid, id);
         } catch (error) {
             console.error("Failed to remove from watchlist:", error);
         }
-    }, []);
+    }, [user]);
 
     const isInWatchlist = useCallback((id: number) => {
         return watchlist.some(item => item.id === id);

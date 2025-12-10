@@ -1,18 +1,13 @@
-// src/lib/radar.ts
-
-"use server";
-
 import { db } from '@/lib/firebase/client';
 import { doc, getDoc, setDoc, Timestamp } from "firebase/firestore";
 import { AllManagedWatchedData, RelevantRadarItem, TMDbRadarItem, TMDbSearchResult } from '@/types';
-import { getNowPlayingMovies, getOnTheAirTV, getTopRatedOnProvider, getTrending, getUpcomingMovies } from './tmdb';
+import { getNowPlayingMovies, getOnTheAirTV, getTopMixedOnProvider, getTrending, getUpcomingMovies, getTopRatedMovies, getPopularMovies, getTopRatedTV, getPopularTV } from './tmdb';
 import { fetchPersonalizedRadar, formatWatchedDataForPrompt } from './aiService';
 import { setRelevantReleases, setTMDbRadarCache, getWatchedItems } from './firestore';
 
 // --- LÓGICA PARA O RADAR GERAL (TMDb) ---
 
 const METADATA_TMDb_ID = 'tmdbRadarMetadata';
-const UPDATE_INTERVAL_DAYS_TMDb = 1;
 
 const shouldUpdateTMDbRadar = async (): Promise<boolean> => {
     const metadataRef = doc(db, 'metadata', METADATA_TMDb_ID);
@@ -42,12 +37,12 @@ const shouldUpdateTMDbRadar = async (): Promise<boolean> => {
 const toTMDbRadarItem = (item: TMDbSearchResult, listType: TMDbRadarItem['listType'], providerId?: number): TMDbRadarItem | null => {
     const releaseDate = item.release_date || item.first_air_date;
     if (!releaseDate) return null;
-    
+
     const mediaType = item.media_type || (item.title ? 'movie' : 'tv');
     const fullTitle = item.title || item.name;
     const yearRegex = /\(\d{4}\)/;
-    const titleWithYear = yearRegex.test(fullTitle || '') 
-        ? fullTitle 
+    const titleWithYear = yearRegex.test(fullTitle || '')
+        ? fullTitle
         : `${fullTitle} (${new Date(releaseDate).getFullYear()})`;
 
     const radarItem: TMDbRadarItem = {
@@ -58,14 +53,14 @@ const toTMDbRadarItem = (item: TMDbSearchResult, listType: TMDbRadarItem['listTy
         type: mediaType,
         listType: listType,
     };
-    
+
     if (item.poster_path) {
         radarItem.posterUrl = `https://image.tmdb.org/t/p/w500${item.poster_path}`;
     }
     if (providerId) {
         radarItem.providerId = providerId;
     }
-    
+
     return radarItem;
 };
 
@@ -77,13 +72,32 @@ export const updateTMDbRadarCache = async (): Promise<void> => {
     const PROVIDER_IDS = { netflix: 8, prime: 119, max: 1899, disney: 337 };
 
     try {
-        const [ nowPlayingMovies, trending, topNetflix, topPrime, topMax, topDisney ] = await Promise.all([
+        const [
+            nowPlayingMovies,
+            trending,
+            topNetflix,
+            topPrime,
+            topMax,
+            topDisney,
+            topRatedMoviesData,
+            popularMoviesData,
+            upcomingMovies,
+            topRatedTVData,
+            popularTVData,
+            onTheAirTV
+        ] = await Promise.all([
             getNowPlayingMovies(),
             getTrending(),
-            getTopRatedOnProvider(PROVIDER_IDS.netflix),
-            getTopRatedOnProvider(PROVIDER_IDS.prime),
-            getTopRatedOnProvider(PROVIDER_IDS.max),
-            getTopRatedOnProvider(PROVIDER_IDS.disney)
+            getTopMixedOnProvider(PROVIDER_IDS.netflix),
+            getTopMixedOnProvider(PROVIDER_IDS.prime),
+            getTopMixedOnProvider(PROVIDER_IDS.max),
+            getTopMixedOnProvider(PROVIDER_IDS.disney),
+            getTopRatedMovies(1),
+            getPopularMovies(1),
+            getUpcomingMovies(),
+            getTopRatedTV(1),
+            getPopularTV(1),
+            getOnTheAirTV()
         ]);
 
         const allItems = [
@@ -92,7 +106,15 @@ export const updateTMDbRadarCache = async (): Promise<void> => {
             ...topNetflix.map(m => toTMDbRadarItem(m, 'top_rated_provider', PROVIDER_IDS.netflix)),
             ...topPrime.map(m => toTMDbRadarItem(m, 'top_rated_provider', PROVIDER_IDS.prime)),
             ...topMax.map(m => toTMDbRadarItem(m, 'top_rated_provider', PROVIDER_IDS.max)),
-            ...topDisney.map(m => toTMDbRadarItem(m, 'top_rated_provider', PROVIDER_IDS.disney))
+            ...topDisney.map(m => toTMDbRadarItem(m, 'top_rated_provider', PROVIDER_IDS.disney)),
+            // Novas Categorias (Filmes)
+            ...topRatedMoviesData.results.map(m => toTMDbRadarItem(m, 'top_rated')),
+            ...popularMoviesData.results.map(m => toTMDbRadarItem(m, 'popular')),
+            ...upcomingMovies.map(m => toTMDbRadarItem(m, 'upcoming')),
+            // Novas Categorias (Séries)
+            ...topRatedTVData.results.map(m => toTMDbRadarItem(m, 'top_rated')),
+            ...popularTVData.results.map(m => toTMDbRadarItem(m, 'popular')),
+            ...onTheAirTV.map(m => toTMDbRadarItem(m, 'on_the_air'))
         ].filter((i): i is TMDbRadarItem => !!i);
 
         const allItemsMap = new Map<string, TMDbRadarItem>();
@@ -113,7 +135,11 @@ export const updateTMDbRadarCache = async (): Promise<void> => {
 };
 
 // --- LÓGICA PARA O RADAR RELEVANTE (IA) ---
+// NOTA: Esta função foi desabilitada pois requer userId específico,
+// tornando-a incompatível com cache global. Considere implementar
+// por usuário no futuro.
 
+/*
 const METADATA_RELEVANT_ID = 'relevantRadarMetadata';
 const UPDATE_INTERVAL_DAYS_RELEVANT = 7;
 
@@ -145,10 +171,10 @@ const toRelevantRadarItem = (item: TMDbSearchResult, reason: string): RelevantRa
     const mediaType = item.media_type || (item.title ? 'movie' : 'tv');
     const fullTitle = item.title || item.name;
     const yearRegex = /\(\d{4}\)/;
-    const titleWithYear = yearRegex.test(fullTitle || '') 
-        ? fullTitle 
+    const titleWithYear = yearRegex.test(fullTitle || '')
+        ? fullTitle
         : `${fullTitle} (${new Date(releaseDate).getFullYear()})`;
-    
+
     const radarItem: RelevantRadarItem = {
         id: item.id,
         tmdbMediaType: mediaType,
@@ -162,7 +188,7 @@ const toRelevantRadarItem = (item: TMDbSearchResult, reason: string): RelevantRa
     if (item.poster_path) {
         radarItem.posterUrl = `https://image.tmdb.org/t/p/w500${item.poster_path}`;
     }
-    
+
     return radarItem;
 };
 
@@ -171,7 +197,7 @@ export const updateRelevantReleases = async (): Promise<void> => {
 
     console.log("SERVER ACTION: Iniciando atualização do Radar Relevante (IA)...");
     try {
-        const watchedItems = await getWatchedItems();
+        const watchedItems = await getWatchedItems(userId); // userId não disponível aqui
         const watchedData: AllManagedWatchedData = {
             amei: watchedItems.filter(i => i.rating === 'amei'),
             gostei: watchedItems.filter(i => i.rating === 'gostei'),
@@ -193,11 +219,11 @@ export const updateRelevantReleases = async (): Promise<void> => {
             console.log("Nenhum conteúdo futuro encontrado para análise da IA.");
             return;
         }
-        
+
         const releasesForPrompt = futureContent.map(r => `- ${r.title || r.name} (ID: ${r.id})`).join('\n');
         const formattedData = await formatWatchedDataForPrompt(watchedData);
         const prompt = `Analise o perfil e a lista de lançamentos e selecione até 20 que sejam mais relevantes.\n\n**PERFIL:**\n${formattedData}\n\n**LANÇAMENTOS:**\n${releasesForPrompt}`;
-        
+
         const aiResult = await fetchPersonalizedRadar(prompt);
 
         const relevantItems = aiResult.releases
@@ -206,7 +232,7 @@ export const updateRelevantReleases = async (): Promise<void> => {
                 return original ? toRelevantRadarItem(original, release.reason) : null;
             })
             .filter((item): item is RelevantRadarItem => item !== null);
-        
+
         await setRelevantReleases(relevantItems);
         await setDoc(doc(db, 'metadata', METADATA_RELEVANT_ID), { lastUpdate: new Date() });
 
@@ -215,3 +241,4 @@ export const updateRelevantReleases = async (): Promise<void> => {
         console.error("Falha ao atualizar o Radar Relevante (IA):", error);
     }
 };
+*/

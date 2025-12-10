@@ -32,54 +32,54 @@ export interface ManagedWatchedItem extends WatchedItem {
 }
 
 export interface WatchlistItem {
-    id: number;
-    tmdbMediaType: 'movie' | 'tv';
-    title: string;
-    posterUrl?: string;
-    addedAt: number;
-    loveProbability?: number;
-    // Campos adicionados para o cache de detalhes
-    synopsis?: string;
-    watchProviders?: WatchProviders;
-    genre?: string;
-    voteAverage?: number;
-    type?: MediaType;
+  id: number;
+  tmdbMediaType: 'movie' | 'tv';
+  title: string;
+  posterUrl?: string;
+  addedAt: number;
+  loveProbability?: number;
+  // Campos adicionados para o cache de detalhes
+  synopsis?: string;
+  watchProviders?: WatchProviders;
+  genre?: string;
+  voteAverage?: number;
+  type?: MediaType;
 }
 
 // ESTRUTURA DO DESAFIO ATUALIZADA
 export interface ChallengeStep {
-    title: string; // Título já formatado com o ano
-    tmdbId: number;
-    tmdbMediaType: 'movie' | 'tv'; // Tipo de mídia guardado
-    posterUrl?: string; // Pôster já guardado
-    completed: boolean;
+  title: string; // Título já formatado com o ano
+  tmdbId: number;
+  tmdbMediaType: 'movie' | 'tv'; // Tipo de mídia guardado
+  posterUrl?: string; // Pôster já guardado
+  completed: boolean;
 }
 
 export interface Challenge {
-    id: string; 
-    challengeType: string;
-    reason: string;
-    status: 'active' | 'completed' | 'lost';
-    // Um desafio agora é sempre uma lista de passos, mesmo que tenha apenas um.
-    steps: ChallengeStep[];
+  id: string;
+  challengeType: string;
+  reason: string;
+  status: 'active' | 'completed' | 'lost';
+  // Um desafio agora é sempre uma lista de passos, mesmo que tenha apenas um.
+  steps: ChallengeStep[];
 }
 
 
 export interface RadarItem {
-    id: number;
-    tmdbMediaType: 'movie' | 'tv';
-    title: string;
-    posterUrl?: string;
-    releaseDate: string;
-    type: 'movie' | 'tv';
-    listType: 'upcoming' | 'now_playing' | 'top_rated_provider' | 'trending'; 
-    providerId?: number;
-    nextEpisodeToAir?: {
-        air_date: string;
-        episode_number: number;
-        season_number: number;
-    };
-    reason?: string; // <--- ADICIONE ESTA LINHA
+  id: number;
+  tmdbMediaType: 'movie' | 'tv';
+  title: string;
+  posterUrl?: string;
+  releaseDate: string;
+  type: 'movie' | 'tv';
+  listType: 'upcoming' | 'now_playing' | 'top_rated_provider' | 'trending' | 'top_rated' | 'popular' | 'on_the_air';
+  providerId?: number;
+  nextEpisodeToAir?: {
+    air_date: string;
+    episode_number: number;
+    season_number: number;
+  };
+  reason?: string; // <--- ADICIONE ESTA LINHA
 }
 export type TMDbRadarItem = RadarItem;
 export type RelevantRadarItem = RadarItem;
@@ -106,38 +106,38 @@ export interface Recommendation {
 }
 
 export interface DuelResult {
-    title1: {
-        title: string;
-        posterUrl?: string;
-        analysis: string;
-        probability: number;
-    };
-    title2: {
-        title: string;
-        posterUrl?: string;
-        analysis: string;
-        probability: number;
-    };
-    verdict: string;
+  title1: {
+    title: string;
+    posterUrl?: string;
+    analysis: string;
+    probability: number;
+  };
+  title2: {
+    title: string;
+    posterUrl?: string;
+    analysis: string;
+    probability: number;
+  };
+  verdict: string;
 }
 
 export interface TMDbSearchResult {
-    id: number;
-    title?: string;
-    name?: string;
-    overview: string;
-    popularity: number;
-    media_type: 'movie' | 'tv';
-    poster_path: string | null;
-    genre_ids: number[];
-    release_date?: string;
-    first_air_date?: string;
+  id: number;
+  title?: string;
+  name?: string;
+  overview: string;
+  popularity: number;
+  media_type: 'movie' | 'tv';
+  poster_path: string | null;
+  genre_ids: number[];
+  release_date?: string;
+  first_air_date?: string;
 }
 
 export type SuggestionFilters = {
-    category: MediaType | null;
-    genres: string[];
-    keywords: string;
+  category: MediaType | null;
+  genres: string[];
+  keywords: string;
 };
 
 // --- NOVOS TIPOS PARA "RELEVANTES DA SEMANA" ---
@@ -182,5 +182,43 @@ export interface DisplayableItem {
   id: number;
   tmdbMediaType: 'movie' | 'tv';
   title: string;
-  posterUrl?: string;
+  name?: string;
+  posterUrl?: string | null;
+  releaseDate?: string;
+  overview?: string;
+  popularity?: number;
+  poster_path?: string | null;
+  genre_ids?: number[];
+  media_type?: 'movie' | 'tv';
+  release_date?: string;
+  first_air_date?: string;
+}
+
+// --- VIDEO PLAYER TYPES ---
+
+export interface VideoProgress {
+  id: number;
+  mediaType: 'movie' | 'tv';
+  timestamp: number;
+  duration: number;
+  progress: number;
+  lastUpdated: number;
+  season?: number;
+  episode?: number;
+  lastServer?: 'videasy' | 'vidking'; // Track which server was used
+}
+
+export interface PlayerEvent {
+  type: 'PLAYER_EVENT';
+  data: {
+    event: 'timeupdate' | 'play' | 'pause' | 'ended' | 'seeked';
+    currentTime: number;
+    duration: number;
+    progress: number;
+    id: string;
+    mediaType: 'movie' | 'tv';
+    season?: number;
+    episode?: number;
+    timestamp: number;
+  };
 }

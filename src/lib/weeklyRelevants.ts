@@ -3,11 +3,10 @@
 "use server";
 
 import { db } from '@/lib/firebase/client';
-import { doc, getDoc, setDoc, Timestamp } from "firebase/firestore"; // 'collection' foi removido daqui
+import { doc, getDoc, setDoc, Timestamp, collection } from "firebase/firestore";
 import { AllManagedWatchedData, WeeklyRelevants, WeeklyRelevantItem } from '@/types';
 import { formatWatchedDataForPrompt, fetchWeeklyRelevants } from './aiService';
 import { getTMDbDetails, searchByTitleAndYear } from './tmdb';
-import { weeklyRelevantsCollection } from './firestore';
 
 const METADATA_COLLECTION_NAME = 'metadata';
 const METADATA_DOC_ID = 'weeklyRelevantsMetadata';
@@ -103,8 +102,8 @@ export const updateWeeklyRelevantsIfNeeded = async (watchedData: AllManagedWatch
             generatedAt: Date.now(),
             categories: nonEmptyCategories,
         };
-        
-        const listDocRef = doc(weeklyRelevantsCollection, 'currentList');
+
+        const listDocRef = doc(collection(db, 'weeklyRelevants'), 'currentList');
         await setDoc(listDocRef, weeklyRelevants);
 
         const metadataRef = doc(db, METADATA_COLLECTION_NAME, METADATA_DOC_ID);

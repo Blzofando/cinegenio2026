@@ -35,7 +35,6 @@ const addToQueue = <T>(requestFn: () => Promise<T>): Promise<T> => {
 
 const internalSearchByTitleAndYear = async (title: string, year: number, mediaType: 'movie' | 'tv'): Promise<TMDbSearchResult | null> => {
     const endpoint = mediaType === 'movie' ? 'movie' : 'tv';
-    // CORREÇÃO: O parâmetro para buscar filmes por ano é 'year', e não 'primary_release_year'.
     const yearParam = mediaType === 'movie' ? 'year' : 'first_air_date_year';
     const url = `${BASE_URL}/search/${endpoint}?query=${encodeURIComponent(title)}&${yearParam}=${year}&include_adult=false&language=pt-BR&page=1&api_key=${API_KEY}`;
 
@@ -71,7 +70,7 @@ const internalGetTMDbDetails = async (id: number, mediaType: 'movie' | 'tv') => 
         const fallbackUrl = `${BASE_URL}/${fallbackMediaType}/${id}?language=pt-BR&api_key=${API_KEY}&append_to_response=watch/providers,credits`;
         response = await fetch(fallbackUrl);
     }
-    
+
     if (response.status === 404) {
         const fallbackUrlEn = `${BASE_URL}/${mediaType}/${id}?language=en-US&api_key=${API_KEY}&append_to_response=watch/providers,credits`;
         response = await fetch(fallbackUrlEn);
@@ -80,7 +79,7 @@ const internalGetTMDbDetails = async (id: number, mediaType: 'movie' | 'tv') => 
     if (!response.ok) {
         throw new Error(`A busca de detalhes no TMDb falhou com o status: ${response.status}`);
     }
-    
+
     const data = await response.json();
     if (!data.media_type) {
         const successfulUrl = new URL(response.url);
@@ -113,12 +112,30 @@ const internalGetNowPlayingMovies = async (): Promise<TMDbSearchResult[]> => {
     return data.results || [];
 };
 
-const internalGetTopRatedOnProvider = async (providerId: number): Promise<TMDbSearchResult[]> => {
-    const url = `${BASE_URL}/discover/movie?language=pt-BR&watch_region=BR&sort_by=popularity.desc&with_watch_providers=${providerId}&page=1&api_key=${API_KEY}`;
+const internalGetTopMoviesOnProvider = async (providerId: number): Promise<TMDbSearchResult[]> => {
+    const url = `${BASE_URL}/discover/movie?language=pt-BR&watch_region=BR&sort_by=popularity.desc&with_watch_providers=${providerId}&with_watch_monetization_types=flatrate&page=1&api_key=${API_KEY}`;
     const response = await fetch(url);
-    if (!response.ok) throw new Error(`Falha ao buscar Top 10 do provedor: ${response.status}`);
+    if (!response.ok) throw new Error(`Falha ao buscar Top 10 filmes do provedor: ${response.status}`);
     const data = await response.json();
-    return data.results?.slice(0, 10) || [];
+    return data.results?.slice(0, 10).map((item: TMDbSearchResult) => ({ ...item, media_type: 'movie' as const })) || [];
+};
+
+const internalGetTopTVOnProvider = async (providerId: number): Promise<TMDbSearchResult[]> => {
+    const url = `${BASE_URL}/discover/tv?language=pt-BR&watch_region=BR&sort_by=popularity.desc&with_watch_providers=${providerId}&with_watch_monetization_types=flatrate&page=1&api_key=${API_KEY}`;
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Falha ao buscar Top 10 séries do provedor: ${response.status}`);
+    const data = await response.json();
+    return data.results?.slice(0, 10).map((item: TMDbSearchResult) => ({ ...item, media_type: 'tv' as const })) || [];
+};
+
+const internalGetTopMixedOnProvider = async (providerId: number): Promise<TMDbSearchResult[]> => {
+    const [movies, tvShows] = await Promise.all([
+        internalGetTopMoviesOnProvider(providerId),
+        internalGetTopTVOnProvider(providerId)
+    ]);
+
+    const combined = [...movies, ...tvShows].sort((a, b) => b.popularity - a.popularity);
+    return combined.slice(0, 10);
 };
 
 const internalGetTrending = async (): Promise<TMDbSearchResult[]> => {
@@ -133,8 +150,8 @@ export const searchByTitleAndYear = (title: string, year: number, mediaType: 'mo
     return addToQueue(() => internalSearchByTitleAndYear(title, year, mediaType));
 };
 
-export const searchTMDb = (query: string) => { 
-    return addToQueue(() => internalSearchTMDb(query)); 
+export const searchTMDb = (query: string) => {
+    return addToQueue(() => internalSearchTMDb(query));
 };
 
 export const getTMDbDetails = (id: number, mediaType: 'movie' | 'tv') => {
@@ -142,14 +159,14 @@ export const getTMDbDetails = (id: number, mediaType: 'movie' | 'tv') => {
 };
 
 type TMDbProviderData = {
-  'watch/providers'?: {
-    results?: {
-      BR?: {
-        link: string;
-        flatrate?: WatchProvider[];
-      };
+    'watch/providers'?: {
+        results?: {
+            BR?: {
+                link: string;
+                flatrate?: WatchProvider[];
+            };
+        };
     };
-  };
 };
 export const getProviders = (data: TMDbProviderData): WatchProviders | undefined => {
     const providers = data?.['watch/providers']?.results?.BR;
@@ -170,7 +187,7 @@ export const fetchPosterUrl = async (title: string): Promise<string | null> => {
         return null;
     } catch (error) {
         console.error(`Error fetching poster for "${title}":`, error);
-        return null; 
+        return null;
     }
 };
 
@@ -186,11 +203,67 @@ export const getNowPlayingMovies = () => {
     return addToQueue(() => internalGetNowPlayingMovies());
 };
 
-export const getTopRatedOnProvider = (id: number) => {
-    return addToQueue(() => internalGetTopRatedOnProvider(id));
+export const getTopMoviesOnProvider = (id: number) => {
+    return addToQueue(() => internalGetTopMoviesOnProvider(id));
+};
+
+export const getTopTVOnProvider = (id: number) => {
+    return addToQueue(() => internalGetTopTVOnProvider(id));
+};
+
+export const getTopMixedOnProvider = (id: number) => {
+    return addToQueue(() => internalGetTopMixedOnProvider(id));
 };
 
 export const getTrending = () => {
     return addToQueue(() => internalGetTrending());
 };
-// --- FIM DO ARQUIVO ---
+
+// Funções para categorias com paginação
+const internalGetTopRatedMovies = async (page: number = 1): Promise<{ results: TMDbSearchResult[], total_pages: number }> => {
+    const url = `${BASE_URL}/movie/top_rated?language=pt-BR&page=${page}&region=BR&api_key=${API_KEY}`;
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Falha ao buscar filmes top rated: ${response.status}`);
+    const data = await response.json();
+    return { results: data.results || [], total_pages: data.total_pages || 0 };
+};
+
+const internalGetPopularMovies = async (page: number = 1): Promise<{ results: TMDbSearchResult[], total_pages: number }> => {
+    const url = `${BASE_URL}/movie/popular?language=pt-BR&page=${page}&region=BR&api_key=${API_KEY}`;
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Falha ao buscar filmes populares: ${response.status}`);
+    const data = await response.json();
+    return { results: data.results || [], total_pages: data.total_pages || 0 };
+};
+
+const internalGetTopRatedTV = async (page: number = 1): Promise<{ results: TMDbSearchResult[], total_pages: number }> => {
+    const url = `${BASE_URL}/tv/top_rated?language=pt-BR&page=${page}&api_key=${API_KEY}`;
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Falha ao buscar séries top rated: ${response.status}`);
+    const data = await response.json();
+    return { results: data.results || [], total_pages: data.total_pages || 0 };
+};
+
+const internalGetPopularTV = async (page: number = 1): Promise<{ results: TMDbSearchResult[], total_pages: number }> => {
+    const url = `${BASE_URL}/tv/popular?language=pt-BR&page=${page}&api_key=${API_KEY}`;
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Falha ao buscar séries populares: ${response.status}`);
+    const data = await response.json();
+    return { results: data.results || [], total_pages: data.total_pages || 0 };
+};
+
+export const getTopRatedMovies = (page: number = 1) => {
+    return addToQueue(() => internalGetTopRatedMovies(page));
+};
+
+export const getPopularMovies = (page: number = 1) => {
+    return addToQueue(() => internalGetPopularMovies(page));
+};
+
+export const getTopRatedTV = (page: number = 1) => {
+    return addToQueue(() => internalGetTopRatedTV(page));
+};
+
+export const getPopularTV = (page: number = 1) => {
+    return addToQueue(() => internalGetPopularTV(page));
+};

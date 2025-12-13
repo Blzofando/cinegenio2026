@@ -1,4 +1,4 @@
-// Service to save episodes as SUBCOLLECTION with episode cleanup
+// Service to save episodes with FULL TMDB DATA
 import { db } from '@/lib/firebase/client';
 import { doc, setDoc, serverTimestamp, collection, getDocs, deleteDoc } from 'firebase/firestore';
 
@@ -15,6 +15,28 @@ interface EpisodeData {
     viewed: boolean;
     lastWatchedAt: any;
 }
+
+/**
+ * Fetch FULL series data from TMDb (overview, genres, etc.)
+ */
+const fetchFullSeriesData = async (seriesId: number): Promise<any> => {
+    try {
+        console.log(`[TMDb] Fetching FULL series data for ID ${seriesId}...`);
+        const response = await fetch(
+            `https://api.themoviedb.org/3/tv/${seriesId}?api_key=${process.env.NEXT_PUBLIC_TMDB_API_KEY}&language=pt-BR&append_to_response=credits`
+        );
+        const data = await response.json();
+        console.log(`[TMDb] ✅ Got full series data:`, {
+            title: data.name,
+            overview: data.overview?.substring(0, 50),
+            genres: data.genres?.length
+        });
+        return data;
+    } catch (error) {
+        console.error('[TMDb] Error fetching series data:', error);
+        return null;
+    }
+};
 
 /**
  * Fetch episode duration from TMDb API (in seconds)
@@ -37,71 +59,95 @@ const fetchEpisodeDuration = async (seriesId: number, season: number, episode: n
 };
 
 /**
- * Save current episode (viewed:true) and prefetch next (viewed:false)
- * Structure: 
- *   tv_1405/ (minimal metadata)
- *   tv_1405/episodes/s1e2 (current episode with ALL data)
- *   tv_1405/episodes/s1e3 (next episode prefetch)
+ * Save current episode (viewed:true) + next episode (viewed:false) with FULL TMDB DATA
  */
 export const saveDualEpisodes = async (
     userId: string,
     seriesId: number,
     title: string,
     posterUrl: string | undefined,
-    backdropUrl: string | undefined, // 16:9 image
+    backdropUrl: string | undefined,
     currentEpisode: EpisodeInfo,
     nextEpisode: EpisodeInfo | null,
     server: 'videasy' | 'vidking',
     timestamp: number = 0,
     currentDuration: number = 0
 ): Promise<void> => {
-    // Series document reference - ONLY METADATA
+    // Fetch FULL TMDb data
+    const tmdbData = await fetchFullSeriesData(seriesId);
+
+    // Extract COMPLETE data
+    const fullBackdropUrl = tmdbData?.backdrop_path
+        ? `https://image.tmdb.org/t/p/original${tmdbData.backdrop_path}`
+        : (backdropUrl || null);
+
+    const fullPosterUrl = tmdbData?.poster_path
+        ? `https://image.tmdb.org/t/p/w500${tmdbData.poster_path}`
+        : (posterUrl || null);
+
+    const overview = tmdbData?.overview || null;
+    const genres = tmdbData?.genres?.map((g: any) => g.name) || [];
+    const voteAverage = tmdbData?.vote_average || null;
+    const voteCount = tmdbData?.vote_count || null;
+    const numberOfSeasons = tmdbData?.number_of_seasons || null;
+    const numberOfEpisodes = tmdbData?.number_of_episodes || null;
+    const originalLanguage = tmdbData?.original_language || null;
+    const originalName = tmdbData?.original_name || null;
+    const firstAirDate = tmdbData?.first_air_date || null;
+
     const seriesDocRef = doc(db, 'users', userId, 'nowWatching', `tv_${seriesId}`);
 
-    // Save MINIMAL series metadata (NO episode-specific data!)
+    // Save FULL series metadata
     await setDoc(seriesDocRef, {
         id: seriesId,
         mediaType: 'tv',
         title,
-        posterUrl: posterUrl || null,
-        backdropUrl: backdropUrl || null, // Save backdrop
+        posterUrl: fullPosterUrl,
+        backdropUrl: fullBackdropUrl, // 16:9 backdrop
+
+        // FULL TMDB DATA (for modal without request)
+        overview,
+        genres,
+        voteAverage,
+        voteCount,
+        numberOfSeasons,
+        numberOfEpisodes,
+        originalLanguage,
+        originalName,
+        firstAirDate,
     }, { merge: true });
 
-    // Episodes subcollection
     const episodesRef = collection(seriesDocRef, 'episodes');
 
-    // Save CURRENT episode with ALL DATA in subcollection
+    // Save CURRENT episode
     const currentEpId = `s${currentEpisode.season}e${currentEpisode.episode}`;
     const currentEpRef = doc(episodesRef, currentEpId);
 
     await setDoc(currentEpRef, {
-        // Episode identification
         season: currentEpisode.season,
         episode: currentEpisode.episode,
         id: seriesId,
-
-        // Series metadata (repeated for easy access)
         title,
-        posterUrl: posterUrl || null,
-        backdropUrl: backdropUrl || null, // Save backdrop
+        posterUrl: fullPosterUrl,
+        backdropUrl: fullBackdropUrl,
         mediaType: 'tv',
-
-        // Playback data
         timestamp,
         duration: currentDuration,
         lastServer: server,
+        viewed: true,
 
-        // Status
-        viewed: true, // This shows in Continue Watching
+        // FULL TMDB DATA
+        overview,
+        genres,
+        voteAverage,
 
-        // Timestamps
         startedAt: serverTimestamp(),
         lastWatchedAt: serverTimestamp(),
     });
 
-    console.log(`✅ Saved current: S${currentEpisode.season}E${currentEpisode.episode} (${Math.floor(timestamp)}s / ${Math.floor(currentDuration)}s)`);
+    console.log(`✅ Saved current: S${currentEpisode.season}E${currentEpisode.episode} with FULL TMDB data`);
 
-    // Prefetch NEXT episode with TMDb duration
+    // Prefetch NEXT episode
     if (nextEpisode) {
         const nextDuration = await fetchEpisodeDuration(seriesId, nextEpisode.season, nextEpisode.episode);
 
@@ -113,21 +159,27 @@ export const saveDualEpisodes = async (
             episode: nextEpisode.episode,
             id: seriesId,
             title,
-            posterUrl: posterUrl || null,
-            backdropUrl: backdropUrl || null, // Save backdrop
+            posterUrl: fullPosterUrl,
+            backdropUrl: fullBackdropUrl,
             mediaType: 'tv',
             timestamp: 0,
-            duration: nextDuration, // Real duration from TMDb!
+            duration: nextDuration,
             lastServer: server,
-            viewed: false, // Hidden until 90%
+            viewed: false,
+
+            // FULL TMDB DATA
+            overview,
+            genres,
+            voteAverage,
+
             startedAt: serverTimestamp(),
             lastWatchedAt: serverTimestamp(),
         });
 
-        console.log(`✅ Prefetched S${nextEpisode.season}E${nextEpisode.episode} (${Math.floor(nextDuration / 60)}min)`);
+        console.log(`✅ Prefetched NEXT: S${nextEpisode.season}E${nextEpisode.episode} (${Math.floor(nextDuration / 60)}min)`);
     }
 
-    // CLEANUP: Delete old episodes (keep only current and next)
+    // CLEANUP: Delete old episodes
     const allEpisodes = await getDocs(episodesRef);
     for (const episodeDoc of allEpisodes.docs) {
         const epData = episodeDoc.data() as EpisodeData;
@@ -136,14 +188,13 @@ export const saveDualEpisodes = async (
 
         if (!isCurrent && !isNext) {
             await deleteDoc(episodeDoc.ref);
-            console.log(`🗑️ Deleted old episode: S${epData.season}E${epData.episode}`);
+            console.log(`🗑️ Deleted old: S${epData.season}E${epData.episode}`);
         }
     }
 };
 
 /**
- * Swap episodes when 90% reached: mark current as viewed:false, next as viewed:true
- * Also delete very old episodes
+ * Swap episodes when 90% reached
  */
 export const swapToNextEpisode = async (
     userId: string,
@@ -160,18 +211,15 @@ export const swapToNextEpisode = async (
         data: doc.data() as EpisodeData
     }));
 
-    // Find current (viewed:true) and next (viewed:false)
     const current = episodes.find(ep => ep.data.viewed === true);
     const next = episodes.find(ep => ep.data.viewed === false);
 
     if (current && next) {
-        // Mark current as viewed:false
         await setDoc(current.ref, {
             viewed: false,
             lastWatchedAt: serverTimestamp(),
         }, { merge: true });
 
-        // Mark next as viewed:true
         await setDoc(next.ref, {
             viewed: true,
             lastWatchedAt: serverTimestamp(),
@@ -179,7 +227,6 @@ export const swapToNextEpisode = async (
 
         console.log(`✅ Swapped: S${current.data.season}E${current.data.episode} → S${next.data.season}E${next.data.episode}`);
 
-        // Delete episodes that are neither current nor next anymore
         for (const ep of episodes) {
             if (ep.id !== current.id && ep.id !== next.id) {
                 await deleteDoc(ep.ref);

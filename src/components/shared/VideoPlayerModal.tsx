@@ -127,16 +127,21 @@ const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({ item, onClose }) =>
                 hasNext = true;
             }
 
-            // Save current (viewed:true) + next (viewed:false)
+            // Save current (viewed:true) + next (viewed:false) with full data
             await saveDualEpisodes(
                 user.uid,
                 item.id,
                 item.title || item.name || 'Unknown',
                 item.posterUrl || undefined,
+                item.backdropUrl || undefined, // ✅ Pass backdrop 16:9
                 { season: selectedSeason, episode: selectedEpisode },
                 hasNext ? { season: nextSeason, episode: nextEpisode } : null,
-                server
+                server,
+                0, // timestamp (will be updated by player)
+                0  // currentDuration (will be fetched from TMDB)
             );
+
+            console.log('[VideoPlayer] 💾 Saved dual episodes (current + next) with full TMDB data');
         };
 
         saveBothEpisodes();

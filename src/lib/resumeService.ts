@@ -1,6 +1,7 @@
 // Service to load from SUBCOLLECTION: nowWatching/tv_id/episodes/s1e1
 import { db } from '@/lib/firebase/client';
 import { collection, getDocs, doc as firestoreDoc } from 'firebase/firestore';
+import { getSeasonEpisodes } from './services/seriesMetadataCache';
 
 export interface ResumeData {
     id: number;
@@ -19,9 +20,45 @@ export interface ResumeData {
 }
 
 /**
+ * Verifica se próximo episódio está disponível
+ */
+async function isNextEpisodeAvailable(
+    seriesId: number,
+    currentSeason: number,
+    currentEpisode: number
+): Promise<boolean> {
+    try {
+        // Buscar todos os episódios da temporada atual
+        const episodes = await getSeasonEpisodes(seriesId, currentSeason);
+
+        // Procurar próximo episódio na mesma temporada
+        const nextEpisode = episodes.find(ep => ep.episode_number === currentEpisode + 1);
+
+        if (nextEpisode) {
+            // Se encontrou próximo episódio, verificar se está disponível
+            return nextEpisode.isAvailable;
+        }
+
+        // Se não tem próximo na temporada, verificar próxima temporada
+        const nextSeasonEpisodes = await getSeasonEpisodes(seriesId, currentSeason + 1);
+        if (nextSeasonEpisodes.length > 0) {
+            // Verificar se primeiro episódio da próxima temporada está disponível
+            return nextSeasonEpisodes[0].isAvailable;
+        }
+
+        // Não há mais episódios
+        return false;
+    } catch (error) {
+        console.error('[Resume] Error checking next episode:', error);
+        return true; // Em caso de erro, mostrar mesmo assim
+    }
+}
+
+/**
  * Get items for "Continue Watching"
  * - Movies: loaded from nowWatching where mediaType='movie' 
  * - Series: loaded from episodes subcollection (dual-episode logic)
+ * - Smart removal: hide series if ALL episodes watched AND next not available
  */
 export const getContinueWatchingItems = async (userId: string): Promise<ResumeData[]> => {
     try {
@@ -34,9 +71,7 @@ export const getContinueWatchingItems = async (userId: string): Promise<ResumeDa
             const seriesData = seriesDoc.data();
 
             // ========== MOVIES ==========
-            // Load movies directly from nowWatching collection
             if (seriesData.mediaType === 'movie') {
-                // Calculate progress
                 let progress = 0;
                 if (seriesData.timestamp && seriesData.duration && seriesData.duration > 0) {
                     progress = (seriesData.timestamp / seriesData.duration) * 100;
@@ -49,7 +84,7 @@ export const getContinueWatchingItems = async (userId: string): Promise<ResumeDa
                         mediaType: seriesData.mediaType,
                         title: seriesData.title,
                         posterUrl: seriesData.posterUrl,
-                        backdropUrl: seriesData.backdropUrl, // 16:9 image
+                        backdropUrl: seriesData.backdropUrl,
                         timestamp: seriesData.timestamp || 0,
                         duration: seriesData.duration || 0,
                         progress,
@@ -60,9 +95,8 @@ export const getContinueWatchingItems = async (userId: string): Promise<ResumeDa
                     console.log(`[Resume] Movie: ${seriesData.title} (${Math.floor(seriesData.timestamp)}s / ${Math.floor(seriesData.duration)}s)`);
                 }
             }
-            // ========== TV SERIES (DUAL-EPISODE LOGIC - DO NOT TOUCH!) ==========
+            // ========== TV SERIES (INTELLIGENT LOGIC) ==========
             else if (seriesData.mediaType === 'tv') {
-                // Load episodes subcollection
                 const episodesRef = collection(firestoreDoc(db, 'users', userId, 'nowWatching', seriesDoc.id), 'episodes');
                 const episodesSnapshot = await getDocs(episodesRef);
 
@@ -71,6 +105,18 @@ export const getContinueWatchingItems = async (userId: string): Promise<ResumeDa
                     const epData = epDoc.data();
 
                     if (epData.viewed === true) {
+                        // ✅ Check if next episode is available
+                        const nextAvailable = await isNextEpisodeAvailable(
+                            seriesData.id,
+                            epData.season,
+                            epData.episode
+                        );
+
+                        if (!nextAvailable) {
+                            console.log(`[Resume] Hiding ${seriesData.title} S${epData.season}E${epData.episode} - next episode not released yet`);
+                            continue; // Skip this series
+                        }
+
                         // Calculate progress
                         let progress = 0;
                         if (epData.timestamp && epData.duration) {
@@ -82,7 +128,7 @@ export const getContinueWatchingItems = async (userId: string): Promise<ResumeDa
                             mediaType: seriesData.mediaType,
                             title: seriesData.title,
                             posterUrl: seriesData.posterUrl,
-                            backdropUrl: seriesData.backdropUrl || epData.backdropUrl, // 16:9 image
+                            backdropUrl: seriesData.backdropUrl || epData.backdropUrl,
                             season: epData.season,
                             episode: epData.episode,
                             timestamp: epData.timestamp || 0,

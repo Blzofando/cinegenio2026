@@ -1,21 +1,10 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Play } from 'lucide-react';
+import { Play, Lock, Calendar } from 'lucide-react';
 import Image from 'next/image';
-
-interface Season {
-    season_number: number;
-    name: string;
-    episode_count: number;
-}
-
-interface Episode {
-    episode_number: number;
-    name: string;
-    still_path: string | null;
-    overview: string;
-}
+import { useAuth } from '@/contexts/AuthContext';
+import { getSeriesMetadata, getSeasonEpisodes, EpisodeData } from '@/lib/services/seriesMetadataCache';
 
 interface EpisodeSelectorProps {
     showId: number;
@@ -24,22 +13,25 @@ interface EpisodeSelectorProps {
 }
 
 const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({ showId, onSelect, onClose }) => {
+    const { user } = useAuth();
     const [step, setStep] = useState<1 | 2>(1);
-    const [seasons, setSeasons] = useState<Season[]>([]);
+    const [seasons, setSeasons] = useState<any[]>([]);
     const [selectedSeason, setSelectedSeason] = useState<number | null>(null);
-    const [episodes, setEpisodes] = useState<Episode[]>([]);
+    const [episodes, setEpisodes] = useState<EpisodeData[]>([]);
     const [selectedEpisode, setSelectedEpisode] = useState<number | null>(null);
     const [loading, setLoading] = useState(true);
 
+    // Fetch STARTED seasons only (from cache)
     useEffect(() => {
+        if (!user) return;
+
         const fetchSeasons = async () => {
             try {
-                const response = await fetch(
-                    `https://api.themoviedb.org/3/tv/${showId}?api_key=${process.env.NEXT_PUBLIC_TMDB_API_KEY}&language=pt-BR`
-                );
-                const data = await response.json();
-                const validSeasons = data.seasons.filter((s: Season) => s.season_number > 0);
-                setSeasons(validSeasons);
+                const metadata = await getSeriesMetadata(user.uid, showId);
+                if (metadata) {
+                    setSeasons(metadata.seasonsCache.data);
+                    console.log('[EpisodeSelector] Loaded seasons (started only):', metadata.seasonsCache.data.length);
+                }
             } catch (error) {
                 console.error('Error fetching seasons:', error);
             } finally {
@@ -48,18 +40,17 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({ showId, onSelect, onC
         };
 
         fetchSeasons();
-    }, [showId]);
+    }, [showId, user]);
 
+    // Fetch ALL episodes (including future ones)
     useEffect(() => {
         if (!selectedSeason) return;
 
         const fetchEpisodes = async () => {
             try {
-                const response = await fetch(
-                    `https://api.themoviedb.org/3/tv/${showId}/season/${selectedSeason}?api_key=${process.env.NEXT_PUBLIC_TMDB_API_KEY}&language=pt-BR`
-                );
-                const data = await response.json();
-                setEpisodes(data.episodes || []);
+                const episodesData = await getSeasonEpisodes(showId, selectedSeason);
+                setEpisodes(episodesData);
+                console.log(`[EpisodeSelector] Loaded ${episodesData.length} episodes (including future)`);
             } catch (error) {
                 console.error('Error fetching episodes:', error);
             }
@@ -73,10 +64,24 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({ showId, onSelect, onC
         setStep(2);
     };
 
+    const handleEpisodeClick = (episode: EpisodeData) => {
+        if (!episode.isAvailable) {
+            console.log('[EpisodeSelector] Episode not available yet:', episode.air_date);
+            return; // Não permitir selecionar episódios futuros
+        }
+        setSelectedEpisode(episode.episode_number);
+    };
+
     const handleWatch = () => {
         if (selectedSeason && selectedEpisode) {
             onSelect(selectedSeason, selectedEpisode);
         }
+    };
+
+    const formatDate = (dateString: string | null): string => {
+        if (!dateString) return 'Em breve';
+        const date = new Date(dateString);
+        return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
     };
 
     const currentEpisode = episodes.find(ep => ep.episode_number === selectedEpisode);
@@ -124,7 +129,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({ showId, onSelect, onC
 
                 {step === 2 && (
                     <div className="space-y-4">
-                        {/* Info for first row - appears at top */}
+                        {/* Info for first row */}
                         {selectedRow === 0 && currentEpisode && (
                             <div className="p-4 bg-gradient-to-r from-purple-900/40 to-blue-900/40 border border-purple-700/50 rounded-xl animate-in fade-in duration-300">
                                 <div className="flex gap-4">
@@ -154,6 +159,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({ showId, onSelect, onC
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                             {episodes.map((episode, index) => {
                                 const isSelected = selectedEpisode === episode.episode_number;
+                                const isLocked = !episode.isAvailable;
                                 const currentRow = Math.floor(index / columnsCount);
 
                                 const isLastCardBeforeSelectedRow =
@@ -164,12 +170,16 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({ showId, onSelect, onC
                                 return (
                                     <React.Fragment key={episode.episode_number}>
                                         <button
-                                            onClick={() => setSelectedEpisode(episode.episode_number)}
-                                            className={`group relative aspect-video rounded-xl overflow-hidden transition-all transform hover:scale-105 ${isSelected
-                                                    ? 'ring-4 ring-purple-500 shadow-xl shadow-purple-500/50'
-                                                    : 'hover:ring-2 hover:ring-gray-600'
+                                            onClick={() => handleEpisodeClick(episode)}
+                                            disabled={isLocked}
+                                            className={`group relative aspect-video rounded-xl overflow-hidden transition-all transform hover:scale-105 ${isLocked
+                                                    ? 'opacity-60 cursor-not-allowed'
+                                                    : isSelected
+                                                        ? 'ring-4 ring-purple-500 shadow-xl shadow-purple-500/50'
+                                                        : 'hover:ring-2 hover:ring-gray-600'
                                                 }`}
                                         >
+                                            {/* Background Image or Placeholder */}
                                             {episode.still_path ? (
                                                 <>
                                                     <Image
@@ -182,20 +192,45 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({ showId, onSelect, onC
                                                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
                                                 </>
                                             ) : (
-                                                <div className="absolute inset-0 bg-gray-800 flex items-center justify-center">
-                                                    <div className="w-16 h-16 rounded-lg bg-gray-700 animate-pulse" />
+                                                <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center">
+                                                    <div className="text-center">
+                                                        <div className="w-16 h-16 rounded-lg bg-gray-700/50 mx-auto mb-2 flex items-center justify-center">
+                                                            <Calendar className="w-8 h-8 text-gray-500" />
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             )}
 
-                                            <div className="absolute top-2 left-2 px-3 py-1 bg-black/80 rounded-lg">
+                                            {/* Locked Overlay */}
+                                            {isLocked && (
+                                                <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center z-10">
+                                                    <Lock className="w-8 h-8 text-purple-400 mb-2" />
+                                                    <div className="bg-purple-600 px-3 py-1 rounded-full">
+                                                        <p className="text-xs font-bold text-white">
+                                                            {formatDate(episode.air_date)}
+                                                        </p>
+                                                    </div>
+                                                    {episode.daysUntilRelease !== null && episode.daysUntilRelease > 0 && (
+                                                        <p className="text-xs text-gray-300 mt-1">
+                                                            {episode.daysUntilRelease} dias
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            )}
+
+                                            {/* Episode Number Badge */}
+                                            <div className={`absolute top-2 left-2 px-3 py-1 rounded-lg ${isLocked ? 'bg-gray-700/90' : 'bg-black/80'
+                                                }`}>
                                                 <span className="text-sm font-bold text-white">EP {episode.episode_number}</span>
                                             </div>
 
+                                            {/* Episode Title */}
                                             <div className="absolute bottom-0 left-0 right-0 p-3">
                                                 <p className="text-sm font-bold text-white truncate">{episode.name}</p>
                                             </div>
 
-                                            {isSelected && (
+                                            {/* Selected Checkmark */}
+                                            {isSelected && !isLocked && (
                                                 <div className="absolute top-2 right-2 w-7 h-7 bg-purple-600 rounded-full flex items-center justify-center">
                                                     <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
@@ -204,7 +239,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({ showId, onSelect, onC
                                             )}
                                         </button>
 
-                                        {/* Info for other rows - appears after previous row */}
+                                        {/* Info for other rows */}
                                         {isLastCardBeforeSelectedRow && currentEpisode && (
                                             <div className="col-span-full p-4 bg-gradient-to-r from-purple-900/40 to-blue-900/40 border border-purple-700/50 rounded-xl animate-in fade-in duration-300">
                                                 <div className="flex gap-4">

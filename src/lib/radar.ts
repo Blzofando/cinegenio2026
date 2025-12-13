@@ -125,10 +125,64 @@ export const updateTMDbRadarCache = async (): Promise<void> => {
             }
         });
 
-        await setTMDbRadarCache(Array.from(allItemsMap.values()));
+        const allItemsArray = Array.from(allItemsMap.values());
+
+        // Save to old radarCache structure (for backward compatibility)
+        await setTMDbRadarCache(allItemsArray);
+
+        // Save to new public structure (1-hour cache)
+        const CACHE_DURATION = 60 * 60 * 1000; // 1 hour
+        const now = Date.now();
+        const expiresAt = now + CACHE_DURATION;
+
+        // Save trending
+        const trendingItems = allItemsArray.filter(i => i.listType === 'trending');
+        if (trendingItems.length > 0) {
+            await setDoc(doc(db, 'public', 'trending'), {
+                items: trendingItems,
+                lastUpdated: now,
+                expiresAt,
+                cacheType: 'trending'
+            });
+        }
+
+        // Save now-playing
+        const nowPlayingItems = allItemsArray.filter(i => i.listType === 'now_playing');
+        if (nowPlayingItems.length > 0) {
+            await setDoc(doc(db, 'public', 'now-playing'), {
+                items: nowPlayingItems,
+                lastUpdated: now,
+                expiresAt,
+                cacheType: 'now-playing'
+            });
+        }
+
+        // Save upcoming
+        const upcomingItems = allItemsArray.filter(i => i.listType === 'upcoming');
+        if (upcomingItems.length > 0) {
+            await setDoc(doc(db, 'public', 'upcoming'), {
+                items: upcomingItems,
+                lastUpdated: now,
+                expiresAt,
+                cacheType: 'upcoming'
+            });
+        }
+
+        // Save on-the-air
+        const onTheAirItems = allItemsArray.filter(i => i.listType === 'on_the_air');
+        if (onTheAirItems.length > 0) {
+            await setDoc(doc(db, 'public', 'on-the-air'), {
+                items: onTheAirItems,
+                lastUpdated: now,
+                expiresAt,
+                cacheType: 'on-the-air'
+            });
+        }
+
         await setDoc(doc(db, 'metadata', METADATA_TMDb_ID), { lastUpdate: new Date() });
 
         console.log(`Cache do Radar TMDb atualizado! ${allItemsMap.size} itens salvos.`);
+        console.log(`[Public Cache] Saved to public: trending(${trendingItems.length}), now-playing(${nowPlayingItems.length}), upcoming(${upcomingItems.length}), on-the-air(${onTheAirItems.length})`);
     } catch (error) {
         console.error("Falha ao atualizar o cache do Radar TMDb:", error);
     }

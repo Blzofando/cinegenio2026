@@ -10,9 +10,11 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 interface TopTenCarouselProps {
     title: string;
     subtitle: string;
-    items: RadarItem[];
+    items?: RadarItem[];  // Optional - can load from API
     isLoading?: boolean;
-    color?: 'red' | 'blue' | 'lightblue' | 'purple';
+    color?: 'red' | 'blue' | 'lightblue' | 'purple' | 'gray' | 'gold';
+    streamingService?: 'netflix' | 'prime' | 'disney' | 'hbo' | 'apple';  // For service-specific
+    globalType?: 'movies' | 'series';  // For global Top 10
 }
 
 const COLOR_MAP = {
@@ -20,15 +22,58 @@ const COLOR_MAP = {
     blue: '#1e3a8a',     // Prime Video
     lightblue: '#3b82f6', // Disney+
     purple: '#9333ea',   // Max
+    gray: '#6b7280',     // Apple TV+
+    gold: '#f59e0b',     // Global
 };
 
-const TopTenCarousel: React.FC<TopTenCarouselProps> = ({ title, subtitle, items, isLoading = false, color = 'red' }) => {
+const TopTenCarousel: React.FC<TopTenCarouselProps> = ({
+    title,
+    subtitle,
+    items: itemsProp,
+    isLoading: isLoadingProp = false,
+    color = 'red',
+    streamingService,
+    globalType
+}) => {
     const [selectedItem, setSelectedItem] = useState<DisplayableItem | null>(null);
     const [showArrows, setShowArrows] = useState(false);
+    const [items, setItems] = useState<RadarItem[]>(itemsProp || []);
+    const [isLoading, setIsLoading] = useState(isLoadingProp);
     const scrollRef = useRef<HTMLDivElement>(null);
     const router = useRouter();
 
     const themeColor = COLOR_MAP[color];
+
+    // Load data from FlixPatrol API
+    React.useEffect(() => {
+        if (streamingService) {
+            setIsLoading(true);
+            import('@/lib/services/flixpatrolService')
+                .then(({ getTop10 }) => getTop10(streamingService))
+                .then(data => {
+                    setItems(data);
+                    setIsLoading(false);
+                })
+                .catch(error => {
+                    console.error(`Error loading Top 10 for ${streamingService}:`, error);
+                    setIsLoading(false);
+                });
+        } else if (globalType) {
+            setIsLoading(true);
+            import('@/lib/services/flixpatrolService')
+                .then(({ getGlobalTop10 }) => getGlobalTop10(globalType))
+                .then(data => {
+                    setItems(data);
+                    setIsLoading(false);
+                })
+                .catch(error => {
+                    console.error(`Error loading global Top 10 ${globalType}:`, error);
+                    setIsLoading(false);
+                });
+        } else if (itemsProp) {
+            setItems(itemsProp);
+        }
+    }, [streamingService, globalType, itemsProp]);
 
     const scroll = (direction: 'left' | 'right') => {
         if (scrollRef.current) {
@@ -37,11 +82,12 @@ const TopTenCarousel: React.FC<TopTenCarouselProps> = ({ title, subtitle, items,
         }
     };
 
+    // Reset scroll to left on mount
     React.useEffect(() => {
         if (scrollRef.current) {
             scrollRef.current.scrollLeft = 0;
         }
-    }, [items]);
+    }, []);
 
     const handleCardClick = (item: RadarItem) => {
         router.push(`/${item.tmdbMediaType}/${item.id}`);

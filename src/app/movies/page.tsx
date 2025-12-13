@@ -6,6 +6,7 @@ import { db } from '@/lib/firebase/client';
 import { RadarItem } from '@/types';
 import TopTenCarousel from '@/components/shared/TopTenCarousel';
 import CategoryCarousel from '@/components/shared/CategoryCarousel';
+import ContinueWatchingCarousel from '@/components/shared/ContinueWatchingCarousel';
 import DashboardHeader from '@/components/shared/DashboardHeader';
 
 export default function MoviesPage() {
@@ -33,11 +34,7 @@ export default function MoviesPage() {
         return () => unsubTMDb();
     }, []);
 
-    // Top 10 Filmes da Semana (trending)
-    const top10Movies = useMemo(() =>
-        tmdbCache.filter(r => r.listType === 'trending' && r.tmdbMediaType === 'movie').slice(0, 10),
-        [tmdbCache]
-    );
+    // No longer needed - using FlixPatrol API directly in component
 
     // Categorias (apenas filmes)
     const topRatedMovies = useMemo(() =>
@@ -66,22 +63,20 @@ export default function MoviesPage() {
 
             {/* Main Content */}
             <div className="pt-8 pb-10">
-                {/* Top 10 da Semana */}
-                {top10Movies.length > 0 && (
-                    <section className="mb-16">
-                        <div className="px-4 md:px-8 mb-8">
-                            <h2 className="text-4xl font-black text-white">TOP 10 DA SEMANA</h2>
-                            <p className="text-gray-400 mt-2">Os filmes mais populares agora</p>
-                        </div>
+                {/* Continue Watching - Movies Only */}
+                <ContinueWatchingCarousel mediaType="movie" />
 
-                        <TopTenCarousel
-                            title="TOP 10 FILMES"
-                            subtitle="DA SEMANA"
-                            items={top10Movies}
-                            isLoading={isLoading}
-                        />
-                    </section>
-                )}
+                {/* Top 10 Global Movies */}
+                <section className="mb-16">
+
+
+                    <TopTenCarousel
+                        globalType="movies"
+                        title="TOP 10 FILMES"
+                        subtitle="TRENDING NOW"
+                        color="gold"
+                    />
+                </section>
 
                 {/* Categorias */}
                 <section>

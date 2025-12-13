@@ -11,7 +11,11 @@ import { getContinueWatchingItems, ResumeData } from '@/lib/resumeService';
 import { db } from '@/lib/firebase/client';
 import { doc, deleteDoc } from 'firebase/firestore';
 
-const ContinueWatchingCarousel: React.FC = () => {
+interface ContinueWatchingCarouselProps {
+    mediaType?: 'movie' | 'tv'; // Optional filter
+}
+
+const ContinueWatchingCarousel: React.FC<ContinueWatchingCarouselProps> = ({ mediaType }) => {
     const { user } = useAuth();
     const router = useRouter();
     const [items, setItems] = useState<ResumeData[]>([]);
@@ -29,7 +33,13 @@ const ContinueWatchingCarousel: React.FC = () => {
             try {
                 const data = await getContinueWatchingItems(user.uid);
                 console.log('[ContinueWatching] Smart resume loaded:', data);
-                setItems(data);
+
+                // Filter by mediaType if provided
+                const filteredData = mediaType
+                    ? data.filter(item => item.mediaType === mediaType)
+                    : data;
+
+                setItems(filteredData);
             } catch (error) {
                 console.error('[ContinueWatching] Error:', error);
             } finally {
@@ -38,7 +48,7 @@ const ContinueWatchingCarousel: React.FC = () => {
         };
 
         loadItems();
-    }, [user]);
+    }, [user, mediaType]);
 
     const handleCardClick = (item: ResumeData) => {
         // Clicking CARD opens PLAYER
@@ -48,6 +58,7 @@ const ContinueWatchingCarousel: React.FC = () => {
             tmdbMediaType: item.mediaType,
             title: item.title,
             posterUrl: item.posterUrl,
+            backdropUrl: item.backdropUrl, // Pass backdrop
             // Pass season/episode if TV show
             ...(item.mediaType === 'tv' && {
                 season: item.season,
@@ -113,8 +124,8 @@ const ContinueWatchingCarousel: React.FC = () => {
                 <h2 className="text-2xl font-bold text-white mb-4 px-4">Continuar Assistindo</h2>
                 <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide px-4">
                     {[1, 2, 3].map((i) => (
-                        <div key={i} className="flex-shrink-0 w-48">
-                            <div className="w-full h-72 bg-gray-800 rounded-lg animate-pulse"></div>
+                        <div key={i} className="flex-shrink-0 w-80">
+                            <div className="w-full aspect-video bg-gray-800 rounded-lg animate-pulse"></div>
                         </div>
                     ))}
                 </div>
@@ -134,19 +145,19 @@ const ContinueWatchingCarousel: React.FC = () => {
                     {items.map((item, index) => (
                         <div
                             key={`${item.mediaType}_${item.id}_${index}`}
-                            className="flex-shrink-0 w-48 group"
+                            className="flex-shrink-0 w-80 group"
                         >
                             {/* Card - CLICKABLE to open player */}
                             <div
                                 onClick={() => handleCardClick(item)}
-                                className="relative overflow-hidden rounded-lg shadow-lg mb-2 cursor-pointer"
+                                className="relative overflow-hidden rounded-lg shadow-lg mb-2 cursor-pointer aspect-video"
                             >
                                 <Image
-                                    src={item.posterUrl || 'https://placehold.co/400x600/374151/9ca3af?text=?'}
+                                    src={item.backdropUrl || item.posterUrl || 'https://placehold.co/1280x720/374151/9ca3af?text=?'}
                                     alt={item.title}
-                                    width={400}
-                                    height={600}
-                                    className="w-full h-72 object-cover transition-transform duration-300 group-hover:scale-110"
+                                    width={1280}
+                                    height={720}
+                                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
                                 />
 
                                 {/* Progress bar */}

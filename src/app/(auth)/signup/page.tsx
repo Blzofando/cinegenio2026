@@ -57,8 +57,9 @@ export default function SignupPage() {
         try {
             await signUp(formData.email, formData.password, formData.name, formData.username);
             router.push('/dashboard');
-        } catch (err: any) {
-            setError(err.message || 'Erro ao criar conta');
+        } catch (err: unknown) {
+            const errorMessage = err instanceof Error ? err.message : 'Erro ao criar conta';
+            setError(errorMessage);
         } finally {
             setLoading(false);
         }

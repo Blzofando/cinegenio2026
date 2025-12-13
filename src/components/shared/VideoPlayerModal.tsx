@@ -90,6 +90,7 @@ const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({ item, onClose }) =>
                 mediaType: item.tmdbMediaType,
                 title: item.title || item.name || 'Unknown',
                 posterUrl: item.posterUrl || undefined,
+                backdropUrl: item.backdropUrl || undefined, // Save backdrop for 16:9
                 lastServer: server,
             });
             console.log('[VideoPlayer] 💾 Saved movie to nowWatching:', item.title);

@@ -7,6 +7,7 @@ export interface ResumeData {
     mediaType: 'movie' | 'tv';
     title: string;
     posterUrl?: string;
+    backdropUrl?: string; // 16:9 image for Continue Watching
     season?: number;
     episode?: number;
     progress?: number; // Percentage watched
@@ -48,6 +49,7 @@ export const getContinueWatchingItems = async (userId: string): Promise<ResumeDa
                         mediaType: seriesData.mediaType,
                         title: seriesData.title,
                         posterUrl: seriesData.posterUrl,
+                        backdropUrl: seriesData.backdropUrl, // 16:9 image
                         timestamp: seriesData.timestamp || 0,
                         duration: seriesData.duration || 0,
                         progress,
@@ -80,6 +82,7 @@ export const getContinueWatchingItems = async (userId: string): Promise<ResumeDa
                             mediaType: seriesData.mediaType,
                             title: seriesData.title,
                             posterUrl: seriesData.posterUrl,
+                            backdropUrl: seriesData.backdropUrl || epData.backdropUrl, // 16:9 image
                             season: epData.season,
                             episode: epData.episode,
                             timestamp: epData.timestamp || 0,

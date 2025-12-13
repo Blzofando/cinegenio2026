@@ -9,6 +9,10 @@ import { getTMDbDetails, getProviders } from '@/lib/tmdb';
 import DashboardHeader from '@/components/shared/DashboardHeader';
 import VideoPlayerModal from '@/components/shared/VideoPlayerModal';
 import { useWatchStatus } from '@/hooks/useWatchStatus';
+import StatusButton from '@/components/shared/StatusButton';
+import CombinedPlayButton from '@/components/shared/CombinedPlayButton';
+import { WatchlistContext } from '@/contexts/WatchlistContext';
+import { useContext } from 'react';
 
 interface MoviePageProps {
     params: Promise<{ id: string }>;
@@ -18,6 +22,7 @@ export default function MoviePage({ params }: MoviePageProps) {
     const [movieData, setMovieData] = useState<any>(null);
     const [showPlayer, setShowPlayer] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
+    const { isInWatchlist, addToWatchlist, removeFromWatchlist } = useContext(WatchlistContext);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -159,36 +164,33 @@ export default function MoviePage({ params }: MoviePageProps) {
 
                         {/* Action Buttons */}
                         <div className="flex flex-wrap gap-3 pt-2">
-                            <button
-                                onClick={() => setShowPlayer(true)}
-                                className={`flex items-center gap-2 px-8 py-3 rounded-lg font-bold transition-all transform hover:scale-105 shadow-lg ${watchStatus === 'rewatch'
-                                    ? 'bg-purple-600 hover:bg-purple-700'
-                                    : watchStatus === 'resume'
-                                        ? 'bg-green-600 hover:bg-green-700'
-                                        : 'bg-red-600 hover:bg-red-700'
-                                    }`}
-                            >
-                                {watchStatus === 'rewatch' ? (
-                                    <>
-                                        <RotateCcw className="w-5 h-5" />
-                                        Rewatch
-                                    </>
-                                ) : watchStatus === 'resume' ? (
-                                    <>
-                                        <Play className="w-5 h-5 fill-current" />
-                                        Resume
-                                    </>
-                                ) : (
-                                    <>
-                                        <Play className="w-5 h-5 fill-current" />
-                                        Assistir
-                                    </>
-                                )}
-                            </button>
-                            <button className="flex items-center gap-2 px-6 py-3 bg-gray-700 hover:bg-gray-600 rounded-lg font-bold transition-all transform hover:scale-105">
-                                <Plus className="w-5 h-5" />
-                                Minha Lista
-                            </button>
+                            <CombinedPlayButton
+                                item={{
+                                    id: movieData.id,
+                                    mediaType: 'movie',
+                                    title: title,
+                                    posterUrl: posterUrl || '',
+                                }}
+                                watchStatus={watchStatus}
+                                onPlay={() => setShowPlayer(true)}
+                                onWatchlistToggle={async () => {
+                                    if (isInWatchlist(movieData.id)) {
+                                        await removeFromWatchlist(movieData.id);
+                                    } else {
+                                        await addToWatchlist({
+                                            id: movieData.id,
+                                            tmdbMediaType: 'movie',
+                                            title: title,
+                                            posterUrl: posterUrl,
+                                            addedAt: Date.now(),
+                                        });
+                                    }
+                                }}
+                                isInWatchlist={isInWatchlist(movieData.id)}
+                                onStatusChange={() => {
+                                    console.log('Status changed');
+                                }}
+                            />
                         </div>
                     </div>
                 </div>

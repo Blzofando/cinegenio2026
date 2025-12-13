@@ -48,6 +48,7 @@ export const saveDualEpisodes = async (
     seriesId: number,
     title: string,
     posterUrl: string | undefined,
+    backdropUrl: string | undefined, // 16:9 image
     currentEpisode: EpisodeInfo,
     nextEpisode: EpisodeInfo | null,
     server: 'videasy' | 'vidking',
@@ -63,6 +64,7 @@ export const saveDualEpisodes = async (
         mediaType: 'tv',
         title,
         posterUrl: posterUrl || null,
+        backdropUrl: backdropUrl || null, // Save backdrop
     }, { merge: true });
 
     // Episodes subcollection
@@ -81,6 +83,7 @@ export const saveDualEpisodes = async (
         // Series metadata (repeated for easy access)
         title,
         posterUrl: posterUrl || null,
+        backdropUrl: backdropUrl || null, // Save backdrop
         mediaType: 'tv',
 
         // Playback data
@@ -111,6 +114,7 @@ export const saveDualEpisodes = async (
             id: seriesId,
             title,
             posterUrl: posterUrl || null,
+            backdropUrl: backdropUrl || null, // Save backdrop
             mediaType: 'tv',
             timestamp: 0,
             duration: nextDuration, // Real duration from TMDb!

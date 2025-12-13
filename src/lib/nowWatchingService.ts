@@ -7,6 +7,7 @@ export interface NowWatchingItem {
     mediaType: 'movie' | 'tv';
     title: string;
     posterUrl?: string;
+    backdropUrl?: string; // 16:9 image for Continue Watching
     season?: number;
     episode?: number;
     lastServer?: 'videasy' | 'vidking';
@@ -43,6 +44,7 @@ export const saveStartWatching = async (
 
     // Only add if exists
     if (item.posterUrl) dataToSave.posterUrl = item.posterUrl;
+    if (item.backdropUrl) dataToSave.backdropUrl = item.backdropUrl; // Save backdrop for 16:9
     if (item.season !== undefined) dataToSave.season = item.season;
     if (item.episode !== undefined) dataToSave.episode = item.episode;
     if (item.lastServer) dataToSave.lastServer = item.lastServer;

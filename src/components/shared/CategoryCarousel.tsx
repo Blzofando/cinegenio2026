@@ -32,7 +32,7 @@ const CategoryCarousel: React.FC<CategoryCarouselProps> = ({ title, items, categ
         if (scrollRef.current) {
             scrollRef.current.scrollLeft = 0;
         }
-    }, [items]);
+    }, []);
 
     const handleCardClick = (item: RadarItem) => {
         router.push(`/${item.tmdbMediaType}/${item.id}`);

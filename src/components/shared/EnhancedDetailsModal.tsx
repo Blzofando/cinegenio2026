@@ -11,6 +11,8 @@ import VideoPlayerModal from './VideoPlayerModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/lib/firebase/client';
 import { collection, getDocs } from 'firebase/firestore';
+import StatusButton from './StatusButton';
+import CombinedPlayButton from './CombinedPlayButton';
 
 interface EnhancedDetailsModalProps {
     item: DisplayableItem;
@@ -163,6 +165,7 @@ const EnhancedDetailsModal: React.FC<EnhancedDetailsModalProps> = ({ item, onClo
             : null;
 
     const mediaType = item.tmdbMediaType === 'movie' ? 'Filme' : 'Série';
+    const posterUrl = item.posterUrl;
 
     return (
         <div
@@ -249,52 +252,21 @@ const EnhancedDetailsModal: React.FC<EnhancedDetailsModalProps> = ({ item, onClo
                         <div className="px-6 md:px-8 pb-6 space-y-5 bg-black">
                             {/* Action Buttons */}
                             <div className="flex flex-wrap gap-3">
-                                <button
-                                    onClick={() => setShowPlayer(true)}
-                                    className={`flex items-center gap-2 px-6 py-3 rounded-lg font-bold text-white transition-all transform hover:scale-105 ${watchStatus === 'rewatch'
-                                        ? 'bg-purple-600 hover:bg-purple-700'
-                                        : watchStatus === 'resume'
-                                            ? 'bg-green-600 hover:bg-green-700'
-                                            : 'bg-red-600 hover:bg-red-700'
-                                        }`}
-                                >
-                                    {watchStatus === 'rewatch' ? (
-                                        <>
-                                            <RotateCcw className="w-5 h-5" />
-                                            Rewatch
-                                        </>
-                                    ) : watchStatus === 'resume' ? (
-                                        <>
-                                            <Play className="w-5 h-5 fill-current" />
-                                            Resume
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Play className="w-5 h-5 fill-current" />
-                                            Assistir
-                                        </>
-                                    )}
-                                </button>
-
-                                <button
-                                    onClick={handleWatchlistToggle}
-                                    className={`flex items-center gap-2 px-6 py-3 rounded-lg font-bold transition-all transform hover:scale-105 ${isInWatchlist
-                                        ? 'bg-green-600 hover:bg-green-700 text-white'
-                                        : 'bg-gray-700 hover:bg-gray-600 text-white'
-                                        }`}
-                                >
-                                    {isInWatchlist ? (
-                                        <>
-                                            <Check className="w-5 h-5" />
-                                            Na Lista
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Plus className="w-5 h-5" />
-                                            Minha Lista
-                                        </>
-                                    )}
-                                </button>
+                                <CombinedPlayButton
+                                    item={{
+                                        id: item.id,
+                                        mediaType: item.tmdbMediaType,
+                                        title: cleanTitle,
+                                        posterUrl: posterUrl || '',
+                                    }}
+                                    watchStatus={watchStatus}
+                                    onPlay={() => setShowPlayer(true)}
+                                    onWatchlistToggle={handleWatchlistToggle}
+                                    isInWatchlist={isInWatchlist}
+                                    onStatusChange={() => {
+                                        console.log('Status changed in modal');
+                                    }}
+                                />
 
                                 <Link
                                     href={detailUrl}

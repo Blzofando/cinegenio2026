@@ -79,10 +79,66 @@ export interface RadarItem {
     episode_number: number;
     season_number: number;
   };
-  reason?: string; // <--- ADICIONE ESTA LINHA
+  reason?: string;
+
+  // DADOS COMPLETOS DO TMDB (para evitar request adicional no modal)
+  backdropUrl?: string;           // Backdrop 16:9
+  overview?: string;               // Sinopse
+  voteAverage?: number;            // Avaliação
+  voteCount?: number;              // Número de votos
+  genres?: string[];               // Gêneros
+  runtime?: number;                // Duração (filmes)
+  numberOfSeasons?: number;        // Número de temporadas (séries)
+  numberOfEpisodes?: number;       // Número de episódios (séries)
+  originalLanguage?: string;       // Idioma original
+  originalTitle?: string;          // Título original
+  popularity?: number;             // Popularidade
+  adult?: boolean;                 // Conteúdo adulto
 }
 export type TMDbRadarItem = RadarItem;
 export type RelevantRadarItem = RadarItem;
+
+// --- FLIXPATROL API TYPES ---
+
+export interface FlixPatrolTMDB {
+  id: number;
+  title: string;
+  original_title?: string;
+  overview: string;
+  poster_path: string;
+  backdrop_path: string;
+  vote_average: number;
+  vote_count: number;
+  release_date: string;
+  genres: string[];
+  runtime?: number;
+  number_of_seasons?: number;
+}
+
+export interface FlixPatrolItem {
+  position: number;
+  title: string;
+  popularity: number;
+  year: number;
+  type: 'movie' | 'series';
+  tmdb: FlixPatrolTMDB;
+  timestamp: string;
+}
+
+export interface FlixPatrolResponse {
+  service: string;
+  date: string;
+  overall?: FlixPatrolItem[];
+  movies?: FlixPatrolItem[];
+  tvShows?: FlixPatrolItem[];
+}
+
+export interface FlixPatrolCacheDoc {
+  service: 'netflix' | 'prime' | 'disney' | 'hbo' | 'apple';
+  items: RadarItem[];
+  lastUpdated: number;
+  expiresAt: number;
+}
 
 export type AllManagedWatchedData = {
   [key in Rating]: ManagedWatchedItem[];
@@ -184,6 +240,7 @@ export interface DisplayableItem {
   title: string;
   name?: string;
   posterUrl?: string | null;
+  backdropUrl?: string | null; // 16:9 image
   releaseDate?: string;
   overview?: string;
   popularity?: number;

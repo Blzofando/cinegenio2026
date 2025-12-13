@@ -30,7 +30,7 @@ const MovieCarousel: React.FC<MovieCarouselProps> = ({ title, items, isLoading =
         if (scrollRef.current) {
             scrollRef.current.scrollLeft = 0;
         }
-    }, [items]);
+    }, []);
 
     const handleCardClick = (item: RadarItem) => {
         router.push(`/${item.tmdbMediaType}/${item.id}`);

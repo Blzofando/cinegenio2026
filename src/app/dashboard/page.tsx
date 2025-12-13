@@ -37,27 +37,7 @@ export default function DashboardHome() {
         return () => unsubscribe();
     }, [hasTriggeredPopulate]);
 
-    // Top 10s por provedor (MISTO - filmes e séries)
-    const topNetflix = useMemo(() =>
-        tmdbCache.filter(r => r.providerId === 8).slice(0, 10),
-        [tmdbCache]
-    );
-
-    const topPrime = useMemo(() =>
-        tmdbCache.filter(r => r.providerId === 119).slice(0, 10),
-        [tmdbCache]
-    );
-
-    const topMax = useMemo(() =>
-        tmdbCache.filter(r => r.providerId === 1899).slice(0, 10),
-        [tmdbCache]
-    );
-
-    const topDisney = useMemo(() =>
-        tmdbCache.filter(r => r.providerId === 337).slice(0, 10),
-        [tmdbCache]
-    );
-
+    // Carousels baseados em radarCache (trending e now playing)
     const trending = useMemo(() =>
         tmdbCache.filter(r => r.listType === 'trending').slice(0, 20),
         [tmdbCache]
@@ -77,49 +57,44 @@ export default function DashboardHome() {
                 {/* Continue Watching Carousel */}
                 <ContinueWatchingCarousel />
 
-                {(topNetflix.length > 0 || topPrime.length > 0 || topDisney.length > 0 || topMax.length > 0) && (
-                    <section className="mb-16">
-                        <div className="px-4 md:px-8 mb-8">
-                            <p className="text-gray-400 mt-2">Os mais assistidos em cada plataforma</p>
-                        </div>
+                {/* SEÇÃO: TOP 10 STREAMINGS (FlixPatrol API) */}
+                <section className="mb-16">
 
-                        {topNetflix.length > 0 && (
-                            <TopTenCarousel
-                                title="TOP 10 NETFLIX"
-                                subtitle="CONTENT TODAY"
-                                items={topNetflix}
-                                color="red"
-                            />
-                        )}
+                    <TopTenCarousel
+                        streamingService="netflix"
+                        title="TOP 10 NETFLIX"
+                        subtitle="TRENDING NOW"
+                        color="red"
+                    />
 
-                        {topPrime.length > 0 && (
-                            <TopTenCarousel
-                                title="TOP 10 PRIME VIDEO"
-                                subtitle="TRENDING NOW"
-                                items={topPrime}
-                                color="blue"
-                            />
-                        )}
+                    <TopTenCarousel
+                        streamingService="prime"
+                        title="TOP 10 PRIME VIDEO"
+                        subtitle="TRENDING NOW"
+                        color="blue"
+                    />
 
-                        {topDisney.length > 0 && (
-                            <TopTenCarousel
-                                title="TOP 10 DISNEY+"
-                                subtitle="POPULAR CONTENT"
-                                items={topDisney}
-                                color="lightblue"
-                            />
-                        )}
+                    <TopTenCarousel
+                        streamingService="disney"
+                        title="TOP 10 DISNEY+"
+                        subtitle="TRENDING NOW"
+                        color="lightblue"
+                    />
 
-                        {topMax.length > 0 && (
-                            <TopTenCarousel
-                                title="TOP 10 MAX"
-                                subtitle="MOST WATCHED"
-                                items={topMax}
-                                color="purple"
-                            />
-                        )}
-                    </section>
-                )}
+                    <TopTenCarousel
+                        streamingService="hbo"
+                        title="TOP 10 MAX"
+                        subtitle="TRENDING NOW"
+                        color="purple"
+                    />
+
+                    <TopTenCarousel
+                        streamingService="apple"
+                        title="TOP 10 APPLE TV+"
+                        subtitle="TRENDING NOW"
+                        color="gray"
+                    />
+                </section>
 
                 {/* SEÇÃO: TENDÊNCIAS & LANÇAMENTOS */}
                 {(trending.length > 0 || nowPlaying.length > 0) && (

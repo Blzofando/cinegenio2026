@@ -1,0 +1,316 @@
+"use client";
+
+import React, { useState, useRef, useEffect } from 'react';
+import { Play, RotateCcw, MoreVertical, Eye, EyeOff, Check, List, Plus } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { markAsWatching, restartItem } from '@/lib/watchedService';
+import { db } from '@/lib/firebase/client';
+import { doc, getDoc, deleteDoc } from 'firebase/firestore';
+import RatingModal from './RatingModal';
+import EpisodeSelector from './EpisodeSelector';
+
+interface CombinedPlayButtonProps {
+    item: {
+        id: number;
+        mediaType: 'movie' | 'tv';
+        title: string;
+        posterUrl: string;
+    };
+    watchStatus: 'new' | 'resume' | 'rewatch';
+    onPlay: () => void;
+    onWatchlistToggle?: () => void;
+    isInWatchlist?: boolean;
+    onStatusChange?: () => void;
+}
+
+const CombinedPlayButton: React.FC<CombinedPlayButtonProps> = ({
+    item,
+    watchStatus,
+    onPlay,
+    onWatchlistToggle,
+    isInWatchlist = false,
+    onStatusChange
+}) => {
+    const { user } = useAuth();
+    const [isOpen, setIsOpen] = useState(false);
+    const [showRatingModal, setShowRatingModal] = useState(false);
+    const [showEpisodeSelector, setShowEpisodeSelector] = useState(false);
+    const [isWatching, setIsWatching] = useState(false);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+
+    // Check if item is in nowWatching
+    useEffect(() => {
+        const checkWatchingStatus = async () => {
+            if (!user) return;
+
+            try {
+                const docRef = doc(db, 'users', user.uid, 'nowWatching', String(item.id));
+                const docSnap = await getDoc(docRef);
+                setIsWatching(docSnap.exists());
+            } catch (error) {
+                console.error('Error checking watching status:', error);
+            }
+        };
+
+        checkWatchingStatus();
+    }, [user, item.id]);
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setIsOpen(false);
+            }
+        };
+
+        if (isOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [isOpen]);
+
+    const handleWatching = async () => {
+        if (!user) return;
+
+        try {
+            if (isWatching) {
+                // Unwatching - remove from nowWatching
+                const docRef = doc(db, 'users', user.uid, 'nowWatching', String(item.id));
+                await deleteDoc(docRef);
+                setIsWatching(false);
+                console.log('✅ Removido de assistindo');
+            } else {
+                // Mark as watching
+                await markAsWatching(user.uid, item);
+                setIsWatching(true);
+                console.log('✅ Marcado como assistindo');
+            }
+            setIsOpen(false);
+            onStatusChange?.();
+        } catch (error) {
+            console.error('Erro:', error);
+            alert('Erro ao alterar status');
+        }
+    };
+
+    const handleWatched = () => {
+        setIsOpen(false);
+        setShowRatingModal(true);
+    };
+
+    const handleRestart = async () => {
+        if (!user) return;
+
+        const confirm = window.confirm(`Recomeçar "${item.title}"?`);
+        if (!confirm) return;
+
+        try {
+            await restartItem(user.uid, item.id, item.mediaType);
+            console.log('✅ Item reiniciado');
+            setIsOpen(false);
+            onStatusChange?.();
+        } catch (error) {
+            console.error('Erro:', error);
+            alert('Erro ao reiniciar');
+        }
+    };
+
+    const handleSelectEpisode = () => {
+        setIsOpen(false);
+        setShowEpisodeSelector(true);
+    };
+
+    const handleEpisodeSelect = (season: number, episode: number) => {
+        console.log(`Episódio selecionado: S${season}E${episode}`);
+        setShowEpisodeSelector(false);
+    };
+
+    return (
+        <>
+            <div ref={dropdownRef} className="relative inline-flex">
+                {/* Combined Button - items-stretch ensures equal height */}
+                <div className="flex items-stretch rounded-lg overflow-hidden shadow-lg">
+                    {/* Main Play Button */}
+                    <button
+                        onClick={onPlay}
+                        className={`flex items-center gap-2 px-8 py-3 font-bold text-white transition-all ${watchStatus === 'rewatch'
+                                ? 'bg-purple-600 hover:bg-purple-700'
+                                : watchStatus === 'resume'
+                                    ? 'bg-green-600 hover:bg-green-700'
+                                    : 'bg-red-600 hover:bg-red-700'
+                            }`}
+                    >
+                        {watchStatus === 'rewatch' ? (
+                            <>
+                                <RotateCcw className="w-5 h-5" />
+                                Rewatch
+                            </>
+                        ) : watchStatus === 'resume' ? (
+                            <>
+                                <Play className="w-5 h-5 fill-current" />
+                                Resume
+                            </>
+                        ) : (
+                            <>
+                                <Play className="w-5 h-5 fill-current" />
+                                Assistir
+                            </>
+                        )}
+                    </button>
+
+                    {/* Dropdown Toggle - flex items-center for vertical centering */}
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setIsOpen(!isOpen);
+                        }}
+                        className={`flex items-center px-3 border-l-2 border-black/20 transition-all ${watchStatus === 'rewatch'
+                                ? 'bg-purple-600 hover:bg-purple-700'
+                                : watchStatus === 'resume'
+                                    ? 'bg-green-600 hover:bg-green-700'
+                                    : 'bg-red-600 hover:bg-red-700'
+                            }`}
+                    >
+                        <MoreVertical className="w-5 h-5 text-white" />
+                    </button>
+                </div>
+
+                {/* Dropdown Menu */}
+                {isOpen && (
+                    <div className="absolute top-full left-0 mt-2 w-64 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                        {/* Watching/Unwatching */}
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handleWatching();
+                            }}
+                            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-800 transition-colors text-left"
+                        >
+                            {isWatching ? (
+                                <>
+                                    <EyeOff className="w-5 h-5 text-gray-400" />
+                                    <div>
+                                        <div className="font-semibold text-white">Unwatching</div>
+                                        <div className="text-xs text-gray-400">Remover de assistindo</div>
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    <Eye className="w-5 h-5 text-blue-400" />
+                                    <div>
+                                        <div className="font-semibold text-white">Assistindo</div>
+                                        <div className="text-xs text-gray-400">Controle manual (0min)</div>
+                                    </div>
+                                </>
+                            )}
+                        </button>
+
+                        {/* Watchlist */}
+                        {onWatchlistToggle && (
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onWatchlistToggle();
+                                    setIsOpen(false);
+                                }}
+                                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-800 transition-colors text-left border-t border-gray-800"
+                            >
+                                {isInWatchlist ? (
+                                    <>
+                                        <Check className="w-5 h-5 text-green-400" />
+                                        <div>
+                                            <div className="font-semibold text-white">Na Lista</div>
+                                            <div className="text-xs text-gray-400">Remover da watchlist</div>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Plus className="w-5 h-5 text-purple-400" />
+                                        <div>
+                                            <div className="font-semibold text-white">Minha Lista</div>
+                                            <div className="text-xs text-gray-400">Adicionar à watchlist</div>
+                                        </div>
+                                    </>
+                                )}
+                            </button>
+                        )}
+
+                        {/* Watched */}
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handleWatched();
+                            }}
+                            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-800 transition-colors text-left border-t border-gray-800"
+                        >
+                            <Check className="w-5 h-5 text-green-400" />
+                            <div>
+                                <div className="font-semibold text-white">Watched</div>
+                                <div className="text-xs text-gray-400">Marcar como assistido</div>
+                            </div>
+                        </button>
+
+                        {/* Restart */}
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handleRestart();
+                            }}
+                            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-800 transition-colors text-left border-t border-gray-800"
+                        >
+                            <RotateCcw className="w-5 h-5 text-orange-400" />
+                            <div>
+                                <div className="font-semibold text-white">Recomeçar</div>
+                                <div className="text-xs text-gray-400">Resetar progresso</div>
+                            </div>
+                        </button>
+
+                        {/* Select Episode (TV only) */}
+                        {item.mediaType === 'tv' && (
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleSelectEpisode();
+                                }}
+                                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-800 transition-colors text-left border-t border-gray-800"
+                            >
+                                <List className="w-5 h-5 text-purple-400" />
+                                <div>
+                                    <div className="font-semibold text-white">Episódios</div>
+                                    <div className="text-xs text-gray-400">Selecionar episódio</div>
+                                </div>
+                            </button>
+                        )}
+                    </div>
+                )}
+            </div>
+
+            {/* Rating Modal */}
+            {showRatingModal && (
+                <RatingModal
+                    item={item}
+                    onClose={() => setShowRatingModal(false)}
+                    onSuccess={onStatusChange}
+                />
+            )}
+
+            {/* Episode Selector Modal (TV only) */}
+            {showEpisodeSelector && item.mediaType === 'tv' && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+                    <div className="relative w-full max-w-4xl bg-gray-900 rounded-2xl overflow-hidden">
+                        <EpisodeSelector
+                            showId={item.id}
+                            onSelect={handleEpisodeSelect}
+                            onClose={() => setShowEpisodeSelector(false)}
+                        />
+                    </div>
+                </div>
+            )}
+        </>
+    );
+};
+
+export default CombinedPlayButton;

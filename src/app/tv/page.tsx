@@ -6,6 +6,7 @@ import { db } from '@/lib/firebase/client';
 import { RadarItem } from '@/types';
 import TopTenCarousel from '@/components/shared/TopTenCarousel';
 import CategoryCarousel from '@/components/shared/CategoryCarousel';
+import ContinueWatchingCarousel from '@/components/shared/ContinueWatchingCarousel';
 import DashboardHeader from '@/components/shared/DashboardHeader';
 
 export default function TVPage() {
@@ -33,11 +34,7 @@ export default function TVPage() {
         return () => unsubTMDb();
     }, []);
 
-    // Top 10 Séries da Semana (trending)
-    const top10TV = useMemo(() =>
-        tmdbCache.filter(r => r.listType === 'trending' && r.tmdbMediaType === 'tv').slice(0, 10),
-        [tmdbCache]
-    );
+    // No longer needed - using FlixPatrol API directly in component
 
     // Categorias (apenas séries)
     const topRatedTV = useMemo(() =>
@@ -61,22 +58,20 @@ export default function TVPage() {
 
             {/* Main Content */}
             <div className="pt-8 pb-10">
-                {/* Top 10 da Semana */}
-                {top10TV.length > 0 && (
-                    <section className="mb-16">
-                        <div className="px-4 md:px-8 mb-8">
-                            <h2 className="text-4xl font-black text-white">TOP 10 DA SEMANA</h2>
-                            <p className="text-gray-400 mt-2">As séries mais populares agora</p>
-                        </div>
+                {/* Continue Watching - TV Series Only */}
+                <ContinueWatchingCarousel mediaType="tv" />
 
-                        <TopTenCarousel
-                            title="TOP 10 SÉRIES"
-                            subtitle="DA SEMANA"
-                            items={top10TV}
-                            isLoading={isLoading}
-                        />
-                    </section>
-                )}
+                {/* Top 10 Global Series */}
+                <section className="mb-16">
+
+
+                    <TopTenCarousel
+                        globalType="series"
+                        title="TOP 10 SÉRIES"
+                        subtitle="TRENDING NOW"
+                        color="gold"
+                    />
+                </section>
 
                 {/* Categorias */}
                 <section>

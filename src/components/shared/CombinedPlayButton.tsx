@@ -37,7 +37,9 @@ const CombinedPlayButton: React.FC<CombinedPlayButtonProps> = ({
     const [showRatingModal, setShowRatingModal] = useState(false);
     const [showEpisodeSelector, setShowEpisodeSelector] = useState(false);
     const [isWatching, setIsWatching] = useState(false);
+    const [dropdownPosition, setDropdownPosition] = useState<'below' | 'above'>('below');
     const dropdownRef = useRef<HTMLDivElement>(null);
+    const buttonRef = useRef<HTMLButtonElement>(null);
 
     // Check if item is in nowWatching
     useEffect(() => {
@@ -188,8 +190,25 @@ const CombinedPlayButton: React.FC<CombinedPlayButtonProps> = ({
 
                     {/* Dropdown Toggle - flex items-center for vertical centering */}
                     <button
+                        ref={buttonRef}
                         onClick={(e) => {
                             e.stopPropagation();
+
+                            // Calcular posição do dropdown
+                            if (buttonRef.current) {
+                                const rect = buttonRef.current.getBoundingClientRect();
+                                const spaceBelow = window.innerHeight - rect.bottom;
+                                const spaceAbove = rect.top;
+                                const dropdownHeight = 400; // altura aproximada do menu
+
+                                // Se não couber embaixo mas couber em cima, renderizar em cima
+                                if (spaceBelow < dropdownHeight && spaceAbove > dropdownHeight) {
+                                    setDropdownPosition('above');
+                                } else {
+                                    setDropdownPosition('below');
+                                }
+                            }
+
                             setIsOpen(!isOpen);
                         }}
                         className={`flex items-center px-3 border-l-2 border-black/20 transition-all ${watchStatus === 'rewatch'
@@ -205,7 +224,7 @@ const CombinedPlayButton: React.FC<CombinedPlayButtonProps> = ({
 
                 {/* Dropdown Menu */}
                 {isOpen && (
-                    <div className="absolute top-full left-0 mt-2 w-64 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div className={`absolute left-0 w-64 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl overflow-hidden z-50 animate-in fade-in duration-200 ${dropdownPosition === 'above' ? 'bottom-full mb-2' : 'top-full mt-2'}`}>
                         {/* Watching/Unwatching */}
                         <button
                             onClick={(e) => {

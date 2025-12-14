@@ -33,6 +33,8 @@ const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({ item, onClose }) =>
     const [showServerButton, setShowServerButton] = useState(false);
     const [tvDetails, setTvDetails] = useState<any>(null);
     const [initialLoadDone, setInitialLoadDone] = useState(false);
+    const [lastTimestamp, setLastTimestamp] = useState<number>(0);
+    const [lastDuration, setLastDuration] = useState<number>(0);
 
     console.log('[VideoPlayer] Initial state:', { hasEpisodeInfo, selectedSeason, selectedEpisode, item });
 
@@ -255,6 +257,10 @@ const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({ item, onClose }) =>
                     if (data.data.currentTime !== undefined && data.data.duration) {
                         const currentProgress = (data.data.currentTime / data.data.duration) * 100;
 
+                        // Rastrear último timestamp
+                        setLastTimestamp(Math.floor(data.data.currentTime));
+                        setLastDuration(Math.floor(data.data.duration));
+
                         // At 90%, swap display (current->viewed:false, next->viewed:true)
                         if (item.tmdbMediaType === 'tv' && currentProgress >= 90 && user) {
                             await swapToNextEpisode(user.uid, item.id);
@@ -327,6 +333,33 @@ const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({ item, onClose }) =>
     };
 
     const handleClose = async () => {
+        // Salvar último timestamp ANTES de fechar
+        if (user && lastTimestamp > 0) {
+            try {
+                if (item.tmdbMediaType === 'tv') {
+                    const seriesDocRef = firestoreDoc(db, 'users', user.uid, 'nowWatching', `tv_${item.id}`);
+                    const episodesRef = collection(seriesDocRef, 'episodes');
+                    const currentEpId = `s${selectedSeason}e${selectedEpisode}`;
+                    const currentEpRef = firestoreDoc(episodesRef, currentEpId);
+                    await setDoc(currentEpRef, {
+                        timestamp: lastTimestamp,
+                        duration: lastDuration,
+                        lastWatchedAt: serverTimestamp(),
+                    }, { merge: true });
+                } else if (item.tmdbMediaType === 'movie') {
+                    const movieDocRef = firestoreDoc(db, 'users', user.uid, 'nowWatching', `movie_${item.id}`);
+                    await setDoc(movieDocRef, {
+                        timestamp: lastTimestamp,
+                        duration: lastDuration,
+                        lastWatchedAt: serverTimestamp(),
+                    }, { merge: true });
+                }
+                console.log(`[VideoPlayer] 💾 Final timestamp: ${lastTimestamp}s`);
+            } catch (error) {
+                console.error('[VideoPlayer] Error:', error);
+            }
+        }
+
         if (user) {
             await saveStopWatching(
                 user.uid,

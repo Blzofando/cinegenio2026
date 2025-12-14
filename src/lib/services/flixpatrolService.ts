@@ -1,8 +1,8 @@
-// FlixPatrol API Service - COMPLETO com TMDB enriquecido
 import { RadarItem } from '@/types';
 import { db } from '@/lib/firebase/client';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { getTMDbDetails } from '@/lib/tmdb';
+import { filterStartedSeasons } from './seriesMetadataCache';
 
 const API_BASE_URL = 'https://top-10-streamings.onrender.com';
 const CACHE_DURATION = 60 * 60 * 1000; // 1 hour
@@ -95,6 +95,13 @@ async function enrichWithTMDB(quickItem: QuickItemFull, providerId?: number): Pr
             numberOfSeasons: mediaType === 'tv' ? tmdbData.number_of_seasons : undefined,
             numberOfEpisodes: mediaType === 'tv' ? tmdbData.number_of_episodes : undefined,
         };
+
+        // Filtrar temporadas iniciadas para séries
+        if (mediaType === 'tv' && tmdbData.seasons) {
+            const startedSeasons = await filterStartedSeasons(tmdbId, tmdbData.seasons);
+            radarItem.numberOfSeasons = startedSeasons.length;
+            radarItem.numberOfEpisodes = startedSeasons.reduce((sum: number, s: any) => sum + (s.episode_count || 0), 0);
+        }
 
         // Adicionar providerId apenas se existir
         if (providerId) {

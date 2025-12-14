@@ -1,6 +1,7 @@
 // Service to save episodes with FULL TMDB DATA
 import { db } from '@/lib/firebase/client';
 import { doc, setDoc, serverTimestamp, collection, getDocs, deleteDoc } from 'firebase/firestore';
+import { filterStartedSeasons } from './services/seriesMetadataCache';
 
 interface EpisodeInfo {
     season: number;
@@ -89,8 +90,14 @@ export const saveDualEpisodes = async (
     const genres = tmdbData?.genres?.map((g: any) => g.name) || [];
     const voteAverage = tmdbData?.vote_average || null;
     const voteCount = tmdbData?.vote_count || null;
-    const numberOfSeasons = tmdbData?.number_of_seasons || null;
-    const numberOfEpisodes = tmdbData?.number_of_episodes || null;
+
+    // Filtrar apenas temporadas iniciadas
+    const startedSeasons = tmdbData?.seasons
+        ? await filterStartedSeasons(seriesId, tmdbData.seasons)
+        : [];
+    const numberOfSeasons = startedSeasons.length;
+    const numberOfEpisodes = startedSeasons.reduce((sum: number, s: any) => sum + (s.episode_count || 0), 0);
+
     const originalLanguage = tmdbData?.original_language || null;
     const originalName = tmdbData?.original_name || null;
     const firstAirDate = tmdbData?.first_air_date || null;
@@ -119,6 +126,13 @@ export const saveDualEpisodes = async (
 
     const episodesRef = collection(seriesDocRef, 'episodes');
 
+    // Buscar duração do episódio ATUAL se não foi fornecida
+    let finalCurrentDuration = currentDuration;
+    if (currentDuration === 0) {
+        console.log(`[DualEpisode] Buscando duração do episódio atual S${currentEpisode.season}E${currentEpisode.episode}...`);
+        finalCurrentDuration = await fetchEpisodeDuration(seriesId, currentEpisode.season, currentEpisode.episode);
+    }
+
     // Save CURRENT episode
     const currentEpId = `s${currentEpisode.season}e${currentEpisode.episode}`;
     const currentEpRef = doc(episodesRef, currentEpId);
@@ -132,7 +146,7 @@ export const saveDualEpisodes = async (
         backdropUrl: fullBackdropUrl,
         mediaType: 'tv',
         timestamp,
-        duration: currentDuration,
+        duration: finalCurrentDuration,
         lastServer: server,
         viewed: true,
 

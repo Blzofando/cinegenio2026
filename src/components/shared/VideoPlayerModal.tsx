@@ -144,8 +144,14 @@ const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({ item, onClose }) =>
             console.log('[VideoPlayer] 💾 Saved dual episodes (current + next) with full TMDB data');
         };
 
+        // ❌ NÃO SALVAR se seletor estiver aberto (usuário ainda não escolheu)
+        if (showEpisodeSelector) {
+            console.log('[VideoPlayer] ⏸️ Seletor aberto - aguardando escolha do usuário');
+            return;
+        }
+
         saveBothEpisodes();
-    }, [server, selectedSeason, selectedEpisode, initialLoadDone, tvDetails, user, item]);
+    }, [user, initialLoadDone, tvDetails, server, selectedSeason, selectedEpisode, item, showEpisodeSelector]);
 
     // Fetch TV details
     useEffect(() => {
@@ -165,6 +171,32 @@ const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({ item, onClose }) =>
 
         fetchTVDetails();
     }, [item.id, item.tmdbMediaType]);
+
+    // Save server changes IMMEDIATELY to Firebase
+    useEffect(() => {
+        if (!user || !initialLoadDone) return;
+
+        const saveServerChange = async () => {
+            try {
+                const docId = item.tmdbMediaType === 'movie'
+                    ? `movie_${item.id}`
+                    : `tv_${item.id}`;
+
+                const docRef = firestoreDoc(db, 'users', user.uid, 'nowWatching', docId);
+
+                await setDoc(docRef, {
+                    lastServer: server,
+                    lastWatchedAt: serverTimestamp(),
+                }, { merge: true });
+
+                console.log(`[VideoPlayer] 💾 Server changed to: ${server}`);
+            } catch (error) {
+                console.error('[VideoPlayer] Error saving server:', error);
+            }
+        };
+
+        saveServerChange();
+    }, [server, user, initialLoadDone, item.id, item.tmdbMediaType]);
 
     // Build player URL
     useEffect(() => {

@@ -8,6 +8,7 @@ import { db } from '@/lib/firebase/client';
 import { doc, getDoc, deleteDoc } from 'firebase/firestore';
 import RatingModal from './RatingModal';
 import EpisodeSelector from './EpisodeSelector';
+import { saveDualEpisodes } from '@/lib/dualEpisodeService';
 
 interface CombinedPlayButtonProps {
     item: {
@@ -123,9 +124,33 @@ const CombinedPlayButton: React.FC<CombinedPlayButtonProps> = ({
         setShowEpisodeSelector(true);
     };
 
-    const handleEpisodeSelect = (season: number, episode: number) => {
+
+    const handleEpisodeSelect = async (season: number, episode: number) => {
         console.log(`Episódio selecionado: S${season}E${episode}`);
         setShowEpisodeSelector(false);
+
+        // Salvar episódio selecionado no Firebase ANTES de abrir player
+        if (user && item.mediaType === 'tv') {
+            try {
+                await saveDualEpisodes(
+                    user.uid,
+                    item.id,
+                    item.title,
+                    item.posterUrl,
+                    undefined,
+                    { season, episode },
+                    null,
+                    'videasy',
+                    0,
+                    0
+                );
+                await new Promise(resolve => setTimeout(resolve, 200));
+            } catch (error) {
+                console.error('[CombinedPlayButton] Erro:', error);
+            }
+        }
+
+        onPlay();
     };
 
     return (
@@ -137,10 +162,10 @@ const CombinedPlayButton: React.FC<CombinedPlayButtonProps> = ({
                     <button
                         onClick={onPlay}
                         className={`flex items-center gap-2 px-8 py-3 font-bold text-white transition-all ${watchStatus === 'rewatch'
-                                ? 'bg-purple-600 hover:bg-purple-700'
-                                : watchStatus === 'resume'
-                                    ? 'bg-green-600 hover:bg-green-700'
-                                    : 'bg-red-600 hover:bg-red-700'
+                            ? 'bg-purple-600 hover:bg-purple-700'
+                            : watchStatus === 'resume'
+                                ? 'bg-green-600 hover:bg-green-700'
+                                : 'bg-red-600 hover:bg-red-700'
                             }`}
                     >
                         {watchStatus === 'rewatch' ? (
@@ -168,10 +193,10 @@ const CombinedPlayButton: React.FC<CombinedPlayButtonProps> = ({
                             setIsOpen(!isOpen);
                         }}
                         className={`flex items-center px-3 border-l-2 border-black/20 transition-all ${watchStatus === 'rewatch'
-                                ? 'bg-purple-600 hover:bg-purple-700'
-                                : watchStatus === 'resume'
-                                    ? 'bg-green-600 hover:bg-green-700'
-                                    : 'bg-red-600 hover:bg-red-700'
+                            ? 'bg-purple-600 hover:bg-purple-700'
+                            : watchStatus === 'resume'
+                                ? 'bg-green-600 hover:bg-green-700'
+                                : 'bg-red-600 hover:bg-red-700'
                             }`}
                     >
                         <MoreVertical className="w-5 h-5 text-white" />

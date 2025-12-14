@@ -13,6 +13,7 @@ import { db } from '@/lib/firebase/client';
 import { collection, getDocs } from 'firebase/firestore';
 import StatusButton from './StatusButton';
 import CombinedPlayButton from './CombinedPlayButton';
+import { filterStartedSeasons } from '@/lib/services/seriesMetadataCache';
 
 interface EnhancedDetailsModalProps {
     item: DisplayableItem;
@@ -40,6 +41,7 @@ const EnhancedDetailsModal: React.FC<EnhancedDetailsModalProps> = ({ item, onClo
     const [details, setDetails] = useState<TMDbDetails | null>(null);
     const [loading, setLoading] = useState(true);
     const [showPlayer, setShowPlayer] = useState(false);
+    const [resumeData, setResumeData] = useState<{ season?: number; episode?: number } | null>(null);
 
     useEffect(() => {
         const inList = watchlist.some((w: WatchlistItem) => w.id === item.id && w.tmdbMediaType === item.tmdbMediaType);
@@ -57,6 +59,14 @@ const EnhancedDetailsModal: React.FC<EnhancedDetailsModalProps> = ({ item, onClo
                 const type = item.tmdbMediaType === 'movie' ? 'movie' : 'tv';
                 const response = await fetch(`https://api.themoviedb.org/3/${type}/${item.id}?api_key=${process.env.NEXT_PUBLIC_TMDB_API_KEY}&language=pt-BR`);
                 const data = await response.json();
+
+                // Para séries: filtrar apenas temporadas iniciadas
+                if (type === 'tv' && data.seasons) {
+                    const startedSeasons = await filterStartedSeasons(item.id, data.seasons);
+                    data.number_of_seasons = startedSeasons.length;
+                    data.number_of_episodes = startedSeasons.reduce((sum: number, s: any) => sum + (s.episode_count || 0), 0);
+                }
+
                 setDetails(data);
             } catch (error) {
                 console.error('Error fetching TMDb details:', error);
@@ -129,6 +139,36 @@ const EnhancedDetailsModal: React.FC<EnhancedDetailsModalProps> = ({ item, onClo
                 addedAt: Date.now(),
             });
         }
+    };
+
+    const handlePlay = async () => {
+        // Para séries em resume: buscar temporada/episódio do nowWatching
+        if (user && item.tmdbMediaType === 'tv' && watchStatus === 'resume') {
+            try {
+                const nowWatchingRef = collection(db, 'users', user.uid, 'nowWatching');
+                const snapshot = await getDocs(nowWatchingRef);
+                const docId = `tv_${item.id}`;
+                const matchingDoc = snapshot.docs.find(doc => doc.id === docId);
+
+                if (matchingDoc) {
+                    // Buscar episódio com viewed:true da subcoleção
+                    const episodesRef = collection(matchingDoc.ref, 'episodes');
+                    const episodesSnap = await getDocs(episodesRef);
+
+                    for (const epDoc of episodesSnap.docs) {
+                        const epData = epDoc.data();
+                        if (epData.viewed === true) {
+                            setResumeData({ season: epData.season, episode: epData.episode });
+                            break;
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('[Modal] Error fetching resume data:', error);
+            }
+        }
+
+        setShowPlayer(true);
     };
 
     const handleBackdropClick = (e: React.MouseEvent) => {
@@ -260,7 +300,7 @@ const EnhancedDetailsModal: React.FC<EnhancedDetailsModalProps> = ({ item, onClo
                                         posterUrl: posterUrl || '',
                                     }}
                                     watchStatus={watchStatus}
-                                    onPlay={() => setShowPlayer(true)}
+                                    onPlay={handlePlay}
                                     onWatchlistToggle={handleWatchlistToggle}
                                     isInWatchlist={isInWatchlist}
                                     onStatusChange={() => {
@@ -294,7 +334,10 @@ const EnhancedDetailsModal: React.FC<EnhancedDetailsModalProps> = ({ item, onClo
             {/* Video Player Modal */}
             {showPlayer && (
                 <VideoPlayerModal
-                    item={item}
+                    item={{
+                        ...item,
+                        ...resumeData // Adiciona season/episode se disponível
+                    }}
                     onClose={() => setShowPlayer(false)}
                 />
             )}

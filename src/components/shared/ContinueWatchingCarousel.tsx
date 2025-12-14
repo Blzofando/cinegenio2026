@@ -147,9 +147,9 @@ const ContinueWatchingCarousel: React.FC<ContinueWatchingCarouselProps> = ({ med
                             key={`${item.mediaType}_${item.id}_${index}`}
                             className="flex-shrink-0 w-80 group"
                         >
-                            {/* Card - CLICKABLE to open player */}
+                            {/* Card - CLICKABLE to open MODAL */}
                             <div
-                                onClick={() => handleCardClick(item)}
+                                onClick={(e) => handleTitleClick(e, item)}
                                 className="relative overflow-hidden rounded-lg shadow-lg mb-2 cursor-pointer aspect-video"
                             >
                                 <Image
@@ -170,11 +170,19 @@ const ContinueWatchingCarousel: React.FC<ContinueWatchingCarouselProps> = ({ med
                                     </div>
                                 )}
 
-                                {/* Play icon + Time overlay - CENTER - on hover */}
-                                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-center pointer-events-none z-0">
-                                    <Play className="w-16 h-16 text-white fill-current mb-2" />
+                                {/* Play button + Time - CENTER - CLICKABLE */}
+                                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-center z-10">
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleCardClick(item);
+                                        }}
+                                        className="hover:scale-110 transition-transform duration-200 group/play"
+                                    >
+                                        <Play className="w-16 h-16 text-white group-hover/play:text-purple-400 fill-current mb-2 transition-colors" />
+                                    </button>
                                     {item.timestamp !== undefined && item.duration && item.duration > 0 && (
-                                        <div className="flex items-center gap-1 text-white text-sm font-semibold">
+                                        <div className="flex items-center gap-1 text-white text-sm font-semibold pointer-events-none">
                                             <Clock className="w-4 h-4" />
                                             <span>{formatTime(item.timestamp)} / {formatTime(item.duration)}</span>
                                         </div>

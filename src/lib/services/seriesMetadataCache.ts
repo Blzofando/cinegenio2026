@@ -86,6 +86,33 @@ async function checkSeasonStarted(seriesId: number, seasonNumber: number): Promi
 }
 
 /**
+ * 🔥 FUNÇÃO UNIVERSAL: Filtra temporadas que já começaram
+ * Use em QUALQUER lugar que busque temporadas do TMDB!
+ * 
+ * @param seriesId - ID da série no TMDB
+ * @param seasons - Array de temporadas do TMDB
+ * @returns Array filtrado apenas com temporadas iniciadas
+ */
+export async function filterStartedSeasons(
+    seriesId: number,
+    seasons: any[]
+): Promise<any[]> {
+    const startedSeasons = [];
+
+    for (const season of seasons) {
+        if (season.season_number === 0) continue; // Skip specials
+
+        const hasStarted = await checkSeasonStarted(seriesId, season.season_number);
+        if (hasStarted) {
+            startedSeasons.push(season);
+        }
+    }
+
+    console.log(`[Filter] Series ${seriesId}: ${startedSeasons.length}/${seasons.length} temporadas iniciadas`);
+    return startedSeasons;
+}
+
+/**
  * Busca TODOS os episódios de uma temporada com status
  */
 export async function getSeasonEpisodes(

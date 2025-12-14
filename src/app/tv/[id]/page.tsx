@@ -12,15 +12,21 @@ import { useWatchStatus } from '@/hooks/useWatchStatus';
 import CombinedPlayButton from '@/components/shared/CombinedPlayButton';
 import { WatchlistContext } from '@/contexts/WatchlistContext';
 import { useContext } from 'react';
+import { filterStartedSeasons } from '@/lib/services/seriesMetadataCache';
+import { useAuth } from '@/contexts/AuthContext';
+import { db } from '@/lib/firebase/client';
+import { collection, getDocs } from 'firebase/firestore';
 
 interface TVPageProps {
     params: Promise<{ id: string }>;
 }
 
 export default function TVPage({ params }: TVPageProps) {
+    const { user } = useAuth();
     const [tvData, setTvData] = useState<any>(null);
     const [showPlayer, setShowPlayer] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
+    const [resumeData, setResumeData] = useState<{ season?: number; episode?: number } | null>(null);
     const { isInWatchlist, addToWatchlist, removeFromWatchlist } = useContext(WatchlistContext);
 
     useEffect(() => {
@@ -38,6 +44,13 @@ export default function TVPage({ params }: TVPageProps) {
             if (!data) {
                 notFound();
                 return;
+            }
+
+            // Filtrar apenas temporadas iniciadas
+            if (data.seasons) {
+                const startedSeasons = await filterStartedSeasons(id, data.seasons);
+                data.number_of_seasons = startedSeasons.length;
+                data.number_of_episodes = startedSeasons.reduce((sum: number, s: any) => sum + (s.episode_count || 0), 0);
             }
 
             setTvData(data);
@@ -82,12 +95,44 @@ export default function TVPage({ params }: TVPageProps) {
     const cast = tvData.credits?.cast?.slice(0, 10) || [];
     const similar = tvData.similar?.results?.slice(0, 12) || [];
 
+    const handlePlay = async () => {
+        // Para séries em resume: buscar temporada/episódio do nowWatching
+        if (user && resolvedId && watchStatus === 'resume') {
+            try {
+                const nowWatchingRef = collection(db, 'users', user.uid, 'nowWatching');
+                const snapshot = await getDocs(nowWatchingRef);
+                const docId = `tv_${resolvedId}`;
+                const matchingDoc = snapshot.docs.find(doc => doc.id === docId);
+
+                if (matchingDoc) {
+                    // Buscar episódio com viewed:true da subcoleção
+                    const episodesRef = collection(matchingDoc.ref, 'episodes');
+                    const episodesSnap = await getDocs(episodesRef);
+
+                    for (const epDoc of episodesSnap.docs) {
+                        const epData = epDoc.data();
+                        if (epData.viewed === true) {
+                            setResumeData({ season: epData.season, episode: epData.episode });
+                            console.log(`[TV Page] Resume: S${epData.season}E${epData.episode}`);
+                            break;
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('[TV Page] Error fetching resume data:', error);
+            }
+        }
+
+        setShowPlayer(true);
+    };
+
     const displayableItem = {
         id: tvData.id,
         tmdbMediaType: 'tv' as const,
         title: title,
         name: title,
         posterUrl: posterUrl,
+        ...resumeData // Adiciona season/episode se disponível
     };
 
     return (
@@ -180,7 +225,7 @@ export default function TVPage({ params }: TVPageProps) {
                                     posterUrl: posterUrl || '',
                                 }}
                                 watchStatus={watchStatus}
-                                onPlay={() => setShowPlayer(true)}
+                                onPlay={handlePlay}
                                 onWatchlistToggle={async () => {
                                     if (isInWatchlist(tvData.id)) {
                                         await removeFromWatchlist(tvData.id);

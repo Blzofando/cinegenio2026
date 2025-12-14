@@ -8,10 +8,13 @@ import TopTenCarousel from '@/components/shared/TopTenCarousel';
 import MovieCarousel from '@/components/shared/MovieCarousel';
 import DashboardHeader from '@/components/shared/DashboardHeader';
 import ContinueWatchingCarousel from '@/components/shared/ContinueWatchingCarousel';
+import HeroCarousel from '@/components/shared/HeroCarousel';
+import { getHighlights, HighlightItem } from '@/lib/services/highlightService';
 
 export default function DashboardHome() {
     const [tmdbCache, setTmdbCache] = useState<RadarItem[]>([]);
     const [hasTriggeredPopulate, setHasTriggeredPopulate] = useState(false);
+    const [highlights, setHighlights] = useState<HighlightItem[]>([]);
 
     useEffect(() => {
         // Trigger populate if needed (idempotent on server)
@@ -48,9 +51,23 @@ export default function DashboardHome() {
         [tmdbCache]
     );
 
+    // Load highlights for hero carousel
+    useEffect(() => {
+        const loadHighlights = async () => {
+            const items = await getHighlights();
+            setHighlights(items);
+        };
+        loadHighlights();
+    }, []);
+
     return (
         <div className="min-h-screen bg-gradient-to-b from-black via-gray-900 to-black text-white">
             <DashboardHeader />
+
+            {/* Hero Carousel */}
+            {highlights.length > 0 && (
+                <HeroCarousel items={highlights} />
+            )}
 
             {/* Main Content */}
             <div className="pt-8 pb-10">

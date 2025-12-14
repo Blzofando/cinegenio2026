@@ -8,10 +8,13 @@ import TopTenCarousel from '@/components/shared/TopTenCarousel';
 import CategoryCarousel from '@/components/shared/CategoryCarousel';
 import ContinueWatchingCarousel from '@/components/shared/ContinueWatchingCarousel';
 import DashboardHeader from '@/components/shared/DashboardHeader';
+import HeroCarousel from '@/components/shared/HeroCarousel';
+import { getHighlights, HighlightItem } from '@/lib/services/highlightService';
 
 export default function TVPage() {
     const [tmdbCache, setTmdbCache] = useState<RadarItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [highlights, setHighlights] = useState<HighlightItem[]>([]);
 
     useEffect(() => {
         // Trigger populate check
@@ -30,6 +33,13 @@ export default function TVPage() {
                 setIsLoading(false);
             }
         );
+
+        // Load highlights
+        const loadHighlights = async () => {
+            const items = await getHighlights('tv');
+            setHighlights(items);
+        };
+        loadHighlights();
 
         return () => unsubTMDb();
     }, []);
@@ -55,6 +65,11 @@ export default function TVPage() {
     return (
         <div className="min-h-screen bg-gradient-to-b from-black via-gray-900 to-black text-white">
             <DashboardHeader />
+
+            {/* Hero Carousel */}
+            {highlights.length > 0 && (
+                <HeroCarousel items={highlights} />
+            )}
 
             {/* Main Content */}
             <div className="pt-8 pb-10">

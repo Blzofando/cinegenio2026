@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import UserMenu from '@/components/ui/UserMenu';
+import SearchBar from './SearchBar';
 
 export default function DashboardHeader() {
     const pathname = usePathname();
@@ -21,19 +22,19 @@ export default function DashboardHeader() {
                     <nav className="hidden md:flex gap-6">
                         <Link
                             href="/dashboard"
-                            className={`text-sm font-bold transition-colors ${isActive('/dashboard') ? 'text-white' : 'text-gray-400 hover:text-white'}`}
+                            className={`text - sm font - bold transition - colors ${isActive('/dashboard') ? 'text-white' : 'text-gray-400 hover:text-white'} `}
                         >
                             PÁGINA INICIAL
                         </Link>
                         <Link
                             href="/movies"
-                            className={`text-sm font-bold transition-colors ${isActive('/movies') ? 'text-white' : 'text-gray-400 hover:text-white'}`}
+                            className={`text - sm font - bold transition - colors ${isActive('/movies') ? 'text-white' : 'text-gray-400 hover:text-white'} `}
                         >
                             FILMES
                         </Link>
                         <Link
                             href="/tv"
-                            className={`text-sm font-bold transition-colors ${isActive('/tv') ? 'text-white' : 'text-gray-400 hover:text-white'}`}
+                            className={`text - sm font - bold transition - colors ${isActive('/tv') ? 'text-white' : 'text-gray-400 hover:text-white'} `}
                         >
                             SÉRIES
                         </Link>
@@ -47,6 +48,10 @@ export default function DashboardHeader() {
                     >
                         Interface Antiga
                     </Link>
+
+                    {/* Search Bar */}
+                    <SearchBar />
+
                     <UserMenu />
                 </div>
             </div>

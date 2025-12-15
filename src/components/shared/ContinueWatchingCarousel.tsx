@@ -147,7 +147,7 @@ const ContinueWatchingCarousel: React.FC<ContinueWatchingCarouselProps> = ({ med
                 <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white mb-3 md:mb-4 px-4 md:px-6 lg:px-8 xl:px-12">Continuar Assistindo</h2>
                 <div className="flex gap-2 sm:gap-3 md:gap-4 lg:gap-6 overflow-x-auto pb-4 scrollbar-hide px-4 md:px-6 lg:px-8 xl:px-12">
                     {[1, 2, 3].map((i) => (
-                        <div key={i} className="flex-shrink-0 w-64 sm:w-72 md:w-80">
+                        <div key={i} className="flex-shrink-0 w-56 sm:w-64 md:w-72">
                             <div className="w-full aspect-video bg-gray-800 rounded-lg animate-pulse"></div>
                         </div>
                     ))}
@@ -165,13 +165,13 @@ const ContinueWatchingCarousel: React.FC<ContinueWatchingCarouselProps> = ({ med
             <div className="mb-6 md:mb-8">
                 <div className="flex items-center gap-3 mb-3 md:mb-4 px-4 md:px-6 lg:px-8 xl:px-12">
                     <div className="h-8 w-1 bg-purple-500"></div>
-                    <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white">Continuar Assistindo</h2>
+                    <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-white">Continuar Assistindo</h2>
                 </div>
                 <div className="flex gap-2 sm:gap-3 md:gap-4 lg:gap-6 overflow-x-auto pb-4 scrollbar-hide px-4 md:px-6 lg:px-8 xl:px-12">
                     {items.map((item, index) => (
                         <div
                             key={`${item.mediaType}_${item.id}_${index}`}
-                            className="flex-shrink-0 w-64 sm:w-72 md:w-80 group"
+                            className="flex-shrink-0 w-56 sm:w-64 md:w-72 group"
                         >
                             {/* Card - CLICKABLE to open MODAL */}
                             <div

@@ -102,18 +102,18 @@ const HeroCarousel: React.FC<HeroCarouselProps> = ({ items }) => {
                     <div className="max-w-2xl space-y-4 mb-8">
                         {/* Title Logo or Text */}
                         {currentItem.logoUrl ? (
-                            <div className="relative h-16 md:h-24 w-auto">
+                            <div className="relative h-12 md:h-16 lg:h-24 w-auto">
                                 <Image
                                     src={currentItem.logoUrl}
                                     alt={currentItem.title}
                                     width={400}
                                     height={120}
-                                    className="max-h-[60px] md:max-h-[100px] w-auto object-contain"
+                                    className="max-h-[40px] md:max-h-[60px] lg:max-h-[100px] w-auto object-contain"
                                     style={{ filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.8))' }}
                                 />
                             </div>
                         ) : (
-                            <h1 className="text-4xl md:text-6xl font-bold text-white drop-shadow-2xl">
+                            <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold text-white drop-shadow-2xl">
                                 {currentItem.title}
                             </h1>
                         )}
@@ -163,8 +163,8 @@ const HeroCarousel: React.FC<HeroCarouselProps> = ({ items }) => {
 
                             {/* More Info Button - Navigate to page */}
                             <Link href={`/${currentItem.tmdbMediaType}/${currentItem.id}`}>
-                                <button className="flex items-center gap-2 px-6 py-3 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white font-semibold rounded-lg transition-all">
-                                    <Info className="w-5 h-5" />
+                                <button className="flex items-center gap-2 px-4 md:px-6 py-2 md:py-3 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white font-semibold rounded-lg transition-all text-sm md:text-base">
+                                    <Info className="w-4 h-4 md:w-5 md:h-5" />
                                     Ver Mais
                                 </button>
                             </Link>

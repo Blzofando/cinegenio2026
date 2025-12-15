@@ -12,7 +12,7 @@ export default function DashboardHeader() {
     const isActive = (path: string) => pathname === path;
 
     return (
-        <div className="sticky top-0 z-50 bg-black/90 backdrop-blur-xl" style={{ boxShadow: '0 20px 60px rgba(0, 0, 0, 0.8)' }}>
+        <div className="hidden md:block sticky top-0 z-50 bg-black/90 backdrop-blur-xl" style={{ boxShadow: '0 20px 60px rgba(0, 0, 0, 0.8)' }}>
             <div className="max-w-[1920px] mx-auto px-4 md:px-6 lg:px-8 py-4 flex items-center justify-between gap-4">
                 {/* Logo */}
                 <div className="flex items-center gap-6 md:gap-8">
@@ -23,7 +23,7 @@ export default function DashboardHeader() {
                         CINEGÊNIO
                     </Link>
 
-                    {/* Desktop Navigation */}
+                    {/* Desktop Navigation - Hidden on mobile */}
                     <nav className="hidden lg:flex gap-6">
                         <Link
                             href="/dashboard"
@@ -55,7 +55,7 @@ export default function DashboardHeader() {
                     </nav>
                 </div>
 
-                {/* Right Side - Search + User */}
+                {/* Right Side - Search + User (User hidden on mobile) */}
                 <div className="flex items-center gap-3 md:gap-4">
                     {/* Interface Antiga Button (Desktop only) */}
                     <Link

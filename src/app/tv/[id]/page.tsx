@@ -7,6 +7,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import { Play, Plus, Star, Calendar, TvMinimal, RotateCcw } from 'lucide-react';
 import { getTMDbDetails, getProviders } from '@/lib/tmdb';
 import DashboardHeader from '@/components/shared/DashboardHeader';
+import MobileBottomNav from '@/components/shared/MobileBottomNav';
 import VideoPlayerModal from '@/components/shared/VideoPlayerModal';
 import { useWatchStatus } from '@/hooks/useWatchStatus';
 import CombinedPlayButton from '@/components/shared/CombinedPlayButton';
@@ -105,6 +106,8 @@ export default function TVPage({ params }: TVPageProps) {
     const status = tvData.status || '';
     const backdropUrl = tvData.backdrop_path ? `https://image.tmdb.org/t/p/original${tvData.backdrop_path}` : null;
     const posterUrl = tvData.poster_path ? `https://image.tmdb.org/t/p/w500${tvData.poster_path}` : null;
+    const logoUrl = tvData.images?.logos?.find((logo: any) => logo.iso_639_1 === 'en')?.file_path ||
+        tvData.images?.logos?.[0]?.file_path;
     const genres = tvData.genres?.map((g: { name: string }) => g.name).join(', ') || '';
     const voteAverage = tvData.vote_average ? tvData.vote_average.toFixed(1) : 'N/A';
     const overview = tvData.overview || 'Sinopse não disponível.';
@@ -153,8 +156,9 @@ export default function TVPage({ params }: TVPageProps) {
     };
 
     return (
-        <div className="min-h-screen bg-black text-white">
+        <div className="min-h-screen bg-black text-white pb-16 md:pb-0">
             <DashboardHeader />
+            <MobileBottomNav />
 
             {/* Hero Section */}
             <div className="relative w-full h-[70vh] md:h-[80vh]">
@@ -173,8 +177,9 @@ export default function TVPage({ params }: TVPageProps) {
                 )}
 
                 <div className="absolute bottom-0 left-0 right-0 p-6 md:p-12 flex flex-col md:flex-row gap-8 items-end">
+                    {/* Poster - only show on desktop (md+) */}
                     {posterUrl && (
-                        <div className="flex-shrink-0 w-48 md:w-64 rounded-xl overflow-hidden shadow-2xl transform hover:scale-105 transition-transform duration-300">
+                        <div className="hidden md:block flex-shrink-0 w-48 md:w-64 rounded-xl overflow-hidden shadow-2xl transform hover:scale-105 transition-transform duration-300">
                             <Image
                                 src={posterUrl}
                                 alt={title}
@@ -186,9 +191,23 @@ export default function TVPage({ params }: TVPageProps) {
                     )}
 
                     <div className="flex-1 space-y-4">
-                        <h1 className="text-4xl md:text-6xl font-black drop-shadow-2xl">
-                            {title}
-                        </h1>
+                        {/* Logo on mobile, Title as fallback */}
+                        {logoUrl ? (
+                            <div className="h-16 md:h-20 lg:h-24 w-auto flex items-center">
+                                <Image
+                                    src={`https://image.tmdb.org/t/p/w500${logoUrl}`}
+                                    alt={title}
+                                    width={400}
+                                    height={150}
+                                    className="max-h-[60px] md:max-h-[80px] lg:max-h-[96px] w-auto object-contain"
+                                    style={{ filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.8))' }}
+                                />
+                            </div>
+                        ) : (
+                            <h1 className="text-3xl md:text-5xl lg:text-6xl font-black drop-shadow-2xl">
+                                {title}
+                            </h1>
+                        )}
 
                         {/* Metadata */}
                         <div className="flex flex-wrap items-center gap-4 text-gray-300">
@@ -270,8 +289,8 @@ export default function TVPage({ params }: TVPageProps) {
             <div className="max-w-7xl mx-auto px-6 md:px-12 py-12 space-y-12">
                 {/* Overview */}
                 <section>
-                    <h2 className="text-3xl font-bold mb-4">Sinopse</h2>
-                    <p className="text-gray-300 text-lg leading-relaxed max-w-4xl">
+                    <h2 className="text-2xl md:text-3xl font-bold mb-3 md:mb-4">Sinopse</h2>
+                    <p className="text-gray-300 text-base md:text-lg leading-relaxed max-w-4xl">
                         {overview}
                     </p>
                     <div className="mt-4 text-gray-400">
@@ -370,21 +389,21 @@ export default function TVPage({ params }: TVPageProps) {
                 {/* Where to Watch */}
                 {providers?.flatrate && providers.flatrate.length > 0 && (
                     <section>
-                        <h2 className="text-3xl font-bold mb-6">Onde Assistir</h2>
-                        <div className="flex flex-wrap gap-4">
+                        <h2 className="text-2xl md:text-3xl font-bold mb-4 md:mb-6">Onde Assistir</h2>
+                        <div className="flex flex-wrap gap-3 md:gap-4">
                             {providers.flatrate.map((provider: any) => (
                                 <div
                                     key={provider.provider_id}
-                                    className="flex flex-col items-center gap-2 p-4 bg-gray-900 rounded-lg hover:bg-gray-800 transition-colors"
+                                    className="flex flex-col items-center gap-2 p-3 md:p-4 bg-gray-900 rounded-lg hover:bg-gray-800 transition-colors"
                                 >
                                     <Image
                                         src={`https://image.tmdb.org/t/p/w92${provider.logo_path}`}
                                         alt={provider.provider_name}
-                                        width={64}
-                                        height={64}
+                                        width={48}
+                                        height={48}
                                         className="rounded-lg"
                                     />
-                                    <span className="text-sm text-gray-300">{provider.provider_name}</span>
+                                    <span className="text-xs md:text-sm text-gray-300">{provider.provider_name}</span>
                                 </div>
                             ))}
                         </div>
@@ -394,8 +413,8 @@ export default function TVPage({ params }: TVPageProps) {
                 {/* Cast */}
                 {cast.length > 0 && (
                     <section>
-                        <h2 className="text-3xl font-bold mb-6">Elenco</h2>
-                        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                        <h2 className="text-2xl md:text-3xl font-bold mb-4 md:mb-6">Elenco</h2>
+                        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 md:gap-4">
                             {cast.map((person: { id: number; name: string; character: string; profile_path: string | null }) => (
                                 <div key={person.id} className="group cursor-pointer">
                                     <div className="relative aspect-[2/3] rounded-lg overflow-hidden mb-2 bg-gray-800">
@@ -408,12 +427,12 @@ export default function TVPage({ params }: TVPageProps) {
                                             />
                                         ) : (
                                             <div className="w-full h-full flex items-center justify-center text-gray-600">
-                                                <span className="text-4xl">👤</span>
+                                                <span className="text-3xl md:text-4xl">👤</span>
                                             </div>
                                         )}
                                     </div>
-                                    <h3 className="font-semibold text-sm text-white">{person.name}</h3>
-                                    <p className="text-xs text-gray-400">{person.character}</p>
+                                    <h3 className="font-semibold text-xs md:text-sm text-white line-clamp-1">{person.name}</h3>
+                                    <p className="text-[10px] md:text-xs text-gray-400 line-clamp-1">{person.character}</p>
                                 </div>
                             ))}
                         </div>

@@ -100,28 +100,28 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({ showId, onSelect, onC
 
     return (
         <div className="flex flex-col h-[85vh]">
-            <div className="p-6 border-b border-gray-800">
-                <h2 className="text-3xl font-black text-white">
+            <div className="p-4 md:p-6 border-b border-gray-800">
+                <h2 className="text-2xl md:text-3xl font-black text-white">
                     {step === 1 ? 'Escolha a Temporada' : 'Escolha o Episódio'}
                 </h2>
                 {selectedSeason && step === 2 && (
-                    <p className="mt-2 text-sm text-gray-400">
+                    <p className="mt-2 text-xs md:text-sm text-gray-400">
                         Temporada {selectedSeason} • {episodes.length} episódios
                     </p>
                 )}
             </div>
 
-            <div className="flex-1 overflow-y-auto p-6 scrollbar-hide">
+            <div className="flex-1 overflow-y-auto p-4 md:p-6 scrollbar-hide">
                 {step === 1 && (
-                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
+                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 md:gap-4">
                         {seasons.map((season) => (
                             <button
                                 key={season.season_number}
                                 onClick={() => handleSeasonSelect(season.season_number)}
-                                className="aspect-square bg-gray-800/50 hover:bg-gray-700 border-2 border-gray-700 hover:border-purple-500 rounded-xl transition-all transform hover:scale-105 flex flex-col items-center justify-center gap-2"
+                                className="aspect-square bg-gray-800/50 hover:bg-gray-700 border-2 border-gray-700 hover:border-purple-500 rounded-xl transition-all transform hover:scale-105 flex flex-col items-center justify-center gap-1 md:gap-2"
                             >
-                                <span className="text-4xl font-black text-white">{season.season_number}</span>
-                                <span className="text-xs text-gray-400">{season.episode_count} eps</span>
+                                <span className="text-3xl md:text-4xl font-black text-white">{season.season_number}</span>
+                                <span className="text-[10px] md:text-xs text-gray-400">{season.episode_count} eps</span>
                             </button>
                         ))}
                     </div>
@@ -173,10 +173,10 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({ showId, onSelect, onC
                                             onClick={() => handleEpisodeClick(episode)}
                                             disabled={isLocked}
                                             className={`group relative aspect-video rounded-xl overflow-hidden transition-all transform hover:scale-105 ${isLocked
-                                                    ? 'opacity-60 cursor-not-allowed'
-                                                    : isSelected
-                                                        ? 'ring-4 ring-purple-500 shadow-xl shadow-purple-500/50'
-                                                        : 'hover:ring-2 hover:ring-gray-600'
+                                                ? 'opacity-60 cursor-not-allowed'
+                                                : isSelected
+                                                    ? 'ring-4 ring-purple-500 shadow-xl shadow-purple-500/50'
+                                                    : 'hover:ring-2 hover:ring-gray-600'
                                                 }`}
                                         >
                                             {/* Background Image or Placeholder */}
@@ -272,29 +272,30 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({ showId, onSelect, onC
                 )}
             </div>
 
-            <div className="p-6 border-t border-gray-800 bg-black/50 backdrop-blur-lg">
-                <div className="flex gap-3">
+            <div className="p-4 md:p-6 border-t border-gray-800 bg-black/50 backdrop-blur-lg">
+                <div className="flex gap-2 md:gap-3">
                     {step === 2 && (
                         <>
                             <button
                                 onClick={() => setStep(1)}
-                                className="px-6 py-3 bg-gray-800 hover:bg-gray-700 rounded-xl font-bold text-white transition-all"
+                                className="px-4 md:px-6 py-2 md:py-3 bg-gray-800 hover:bg-gray-700 rounded-xl font-bold text-white text-sm md:text-base transition-all"
                             >
                                 ← Voltar
                             </button>
                             <button
                                 onClick={handleWatch}
                                 disabled={!selectedEpisode}
-                                className="flex-1 flex items-center justify-center gap-3 px-8 py-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 disabled:from-gray-700 disabled:to-gray-700 disabled:cursor-not-allowed rounded-xl font-bold text-white text-lg transition-all transform hover:scale-105 shadow-lg shadow-green-600/50"
+                                className="flex-1 flex items-center justify-center gap-2 md:gap-3 px-4 md:px-8 py-3 md:py-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 disabled:from-gray-700 disabled:to-gray-700 disabled:cursor-not-allowed rounded-xl font-bold text-white text-sm md:text-lg transition-all transform hover:scale-105 shadow-lg shadow-green-600/50"
                             >
-                                <Play className="w-6 h-6 fill-current" />
-                                Assistir Agora
+                                <Play className="w-5 h-5 md:w-6 md:h-6 fill-current" />
+                                <span className="hidden xs:inline">Assistir Agora</span>
+                                <span className="xs:hidden">Assistir</span>
                             </button>
                         </>
                     )}
                     <button
                         onClick={onClose}
-                        className="px-6 py-3 bg-gray-800 hover:bg-gray-700 rounded-xl font-bold text-white transition-colors"
+                        className="px-4 md:px-6 py-2 md:py-3 bg-gray-800 hover:bg-gray-700 rounded-xl font-bold text-white text-sm md:text-base transition-colors"
                     >
                         Cancelar
                     </button>

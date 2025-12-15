@@ -8,6 +8,7 @@ import TopTenCarousel from '@/components/shared/TopTenCarousel';
 import CategoryCarousel from '@/components/shared/CategoryCarousel';
 import ContinueWatchingCarousel from '@/components/shared/ContinueWatchingCarousel';
 import DashboardHeader from '@/components/shared/DashboardHeader';
+import MobileBottomNav from '@/components/shared/MobileBottomNav';
 import HeroCarousel from '@/components/shared/HeroCarousel';
 import { getHighlights, HighlightItem } from '@/lib/services/highlightService';
 import HeroSkeleton from '@/components/shared/skeletons/HeroSkeleton';
@@ -88,8 +89,9 @@ export default function MoviesPage() {
     // If it needs to be populated, a new listener or data source should be added.
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-black via-gray-900 to-black text-white">
+        <div className="min-h-screen bg-gradient-to-b from-black via-gray-900 to-black text-white pb-16 md:pb-0">
             <DashboardHeader />
+            <MobileBottomNav />
 
             {/* Hero Carousel */}
             {highlights.length > 0 ? (

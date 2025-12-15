@@ -7,6 +7,7 @@ import { db } from '@/lib/firebase/client';
 import { getNowPlayingMoviesPaginated, getUpcomingMoviesPaginated, getPopularMovies } from '@/lib/tmdb';
 import InfiniteScroll from 'react-infinite-scroll-component';
 import DashboardHeader from '@/components/shared/DashboardHeader';
+import MobileBottomNav from '@/components/shared/MobileBottomNav';
 import Image from 'next/image';
 import { TMDbSearchResult } from '@/types';
 import EnhancedDetailsModal from '@/components/shared/EnhancedDetailsModal';
@@ -97,8 +98,9 @@ export default function MovieCategoryPage() {
 
     if (isLoading) {
         return (
-            <div className="min-h-screen bg-gradient-to-b from-black via-gray-900 to-black text-white">
+            <div className="min-h-screen bg-gradient-to-b from-black via-gray-900 to-black text-white pb-16 md:pb-0">
                 <DashboardHeader />
+                <MobileBottomNav />
                 <div className="flex items-center justify-center h-96">
                     <div className="w-16 h-16 border-t-4 border-purple-500 border-solid rounded-full animate-spin"></div>
                 </div>
@@ -107,8 +109,9 @@ export default function MovieCategoryPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-black via-gray-900 to-black text-white">
+        <div className="min-h-screen bg-gradient-to-b from-black via-gray-900 to-black text-white pb-16 md:pb-0">
             <DashboardHeader />
+            <MobileBottomNav />
 
             <div className="container mx-auto px-4 py-8">
                 {/* Header */}

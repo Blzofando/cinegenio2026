@@ -195,7 +195,7 @@ const CombinedPlayButton: React.FC<CombinedPlayButtonProps> = ({
                                 ? () => setIsOpen(!isOpen)
                                 : onPlay
                         }
-                        className={`flex items-center gap-2 px-8 py-3 font-bold text-white transition-all ${watchStatus === 'dropped'
+                        className={`flex items-center gap-2 px-4 md:px-6 lg:px-8 py-2 md:py-3 font-bold text-white text-sm md:text-base transition-all ${watchStatus === 'dropped'
                             ? 'bg-orange-600 hover:bg-orange-700'
                             : watchStatus === 'rewatch'
                                 ? 'bg-purple-600 hover:bg-purple-700'
@@ -257,7 +257,7 @@ const CombinedPlayButton: React.FC<CombinedPlayButtonProps> = ({
 
                             setIsOpen(!isOpen);
                         }}
-                        className={`flex items-center px-3 border-l-2 transition-all ${watchStatus === 'dropped'
+                        className={`flex items-center px-2 md:px-3 border-l-2 transition-all ${watchStatus === 'dropped'
                             ? 'bg-orange-600 hover:bg-orange-700 border-black/20'
                             : watchStatus === 'rewatch'
                                 ? 'bg-purple-600 hover:bg-purple-700 border-black/20'

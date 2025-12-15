@@ -345,7 +345,7 @@ const EnhancedDetailsModal: React.FC<EnhancedDetailsModalProps> = ({ item, onClo
                                     {/* Recent Comment Preview */}
                                     {ratingHistory[ratingHistory.length - 1]?.comment && (
                                         <div className="mt-3 p-3 bg-gray-900/50 rounded-xl border border-gray-800 text-sm italic text-gray-400">
-                                            "{ratingHistory[ratingHistory.length - 1].comment}"
+                                            "                                    &quot;{ratingHistory[ratingHistory.length - 1].comment}&quot;"
                                         </div>
                                     )}
                                 </div>

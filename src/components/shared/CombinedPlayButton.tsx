@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { markAsWatching, restartItem } from '@/lib/watchedService';
 import { markAsDropped } from '@/lib/droppedService';
 import { db } from '@/lib/firebase/client';
-import { doc, getDoc, deleteDoc } from 'firebase/firestore';
+import { doc, getDoc, deleteDoc, collection, getDocs, updateDoc, setDoc } from 'firebase/firestore';
 import RatingModal from './RatingModal';
 import EpisodeSelector from './EpisodeSelector';
 import { saveDualEpisodes } from '@/lib/dualEpisodeService';
@@ -122,9 +122,51 @@ const CombinedPlayButton: React.FC<CombinedPlayButtonProps> = ({
         if (!confirm) return;
 
         try {
-            await restartItem(user.uid, item.id, item.mediaType);
-            console.log('✅ Item reiniciado');
+            // Reset timestamp to 0 in Firebase IMMEDIATELY
+            if (item.mediaType === 'movie') {
+                const nowWatchingRef = collection(db, 'users', user.uid, 'nowWatching');
+                const snapshot = await getDocs(nowWatchingRef);
+                const docId = `movie_${item.id}`;
+                const matchingDoc = snapshot.docs.find(d => d.id.startsWith(docId));
+
+                if (matchingDoc) {
+                    await updateDoc(matchingDoc.ref, { timestamp: 0 });
+                    console.log('✅ Movie timestamp reset to 0');
+                }
+            } else if (item.mediaType === 'tv') {
+                const nowWatchingRef = collection(db, 'users', user.uid, 'nowWatching');
+                const snapshot = await getDocs(nowWatchingRef);
+                const docId = `tv_${item.id}`;
+                const matchingDoc = snapshot.docs.find(d => d.id.startsWith(docId));
+
+                if (matchingDoc) {
+                    const data = matchingDoc.data();
+                    const currentSeason = data.season || 1;
+                    const currentEpisode = data.episode || 1;
+                    const episodeDocId = `s${currentSeason}e${currentEpisode}`;
+
+                    const episodesRef = collection(matchingDoc.ref, 'episodes');
+                    const episodesSnap = await getDocs(episodesRef);
+                    const episodeDoc = episodesSnap.docs.find(d => d.id === episodeDocId);
+
+                    if (episodeDoc) {
+                        await updateDoc(episodeDoc.ref, { timestamp: 0 });
+                        console.log(`✅ Episode ${episodeDocId} timestamp reset to 0`);
+                    }
+                }
+            }
+
             setIsOpen(false);
+
+            // Add delay for Firebase to update (especially for TV)
+            await new Promise(resolve => setTimeout(resolve, 300));
+
+            // Open player AFTER resetting timestamp
+            if (onPlay) {
+                onPlay();
+                console.log('✅ Player opened with timestamp 0');
+            }
+
             onStatusChange?.();
         } catch (error) {
             console.error('Erro:', error);

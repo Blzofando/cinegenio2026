@@ -68,12 +68,12 @@ const HeroCarousel: React.FC<HeroCarouselProps> = ({ items }) => {
     return (
         <>
             <div
-                className="relative w-full h-[70vh] md:h-[80vh] bg-black overflow-hidden group"
+                className="relative w-full h-[70vh] md:h-[80vh] bg-black group"
                 onMouseEnter={() => setIsHovered(true)}
                 onMouseLeave={() => setIsHovered(false)}
             >
                 {/* Backdrop Image with Fade Transition */}
-                <div className="absolute inset-0">
+                <div className="absolute inset-0 overflow-hidden">
                     {items.map((item, index) => (
                         <div
                             key={item.id}

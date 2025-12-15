@@ -70,16 +70,28 @@ const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({ item, onClose }) =>
                     }
 
                     // ✅ Resume timestamp from nowWatching (for movies)
-                    if (item.tmdbMediaType === 'movie' && data.timestamp && data.timestamp > 0) {
-                        setLastTimestamp(data.timestamp); // Store for saving later
-                        setInitialResumeTime(data.timestamp); // Store for URL generation
-                        console.log('[VideoPlayer] 🕒 Loaded timestamp from nowWatching:', data.timestamp);
+                    if (item.tmdbMediaType === 'movie') {
+                        if (data.timestamp && data.timestamp > 0) {
+                            setLastTimestamp(data.timestamp); // Store for saving later
+                            setInitialResumeTime(data.timestamp); // Store for URL generation
+                            console.log('[VideoPlayer] 🕒 Loaded timestamp from nowWatching:', data.timestamp);
+                        } else {
+                            // Force 0 if no Firebase timestamp exists
+                            setInitialResumeTime(0);
+                            console.log('[VideoPlayer] 🕒 No Firebase timestamp - forcing 0');
+                        }
                     }
 
                     if (item.tmdbMediaType === 'tv' && data.season && data.episode) {
                         setSelectedSeason(data.season);
                         setSelectedEpisode(data.episode);
                         setShowEpisodeSelector(false);
+                    }
+                } else {
+                    // No Firebase document found - force 0 for movies
+                    if (item.tmdbMediaType === 'movie') {
+                        setInitialResumeTime(0);
+                        console.log('[VideoPlayer] 🆕 No Firebase document - forcing movie to start from 0');
                     }
                 }
             } catch (error) {
@@ -254,22 +266,62 @@ const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({ item, onClose }) =>
             let progressParam = '';
 
             if (user) {
-                // First check getting granular progress
-                const progress = await getProgress(
-                    user.uid,
-                    item.id,
-                    item.tmdbMediaType,
-                    item.tmdbMediaType === 'tv' ? selectedSeason : undefined,
-                    item.tmdbMediaType === 'tv' ? selectedEpisode : undefined
-                );
+                // 🔥 PRIORITY: Always use Firebase data, force 0 if missing
+                if (item.tmdbMediaType === 'movie') {
+                    // For movies: use initialResumeTime (loaded from Firebase nowWatching)
+                    // If Firebase has no data, initialResumeTime will be undefined - force 0
+                    const timestamp = initialResumeTime !== null && initialResumeTime !== undefined ? initialResumeTime : 0;
+                    if (timestamp > 0) {
+                        progressParam = `&progress=${Math.floor(timestamp)}`;
+                        console.log('[VideoPlayer] 🎬 Using Firebase timestamp for movie:', timestamp);
+                    } else {
+                        progressParam = `&progress=0`; // Force 0 to override player cache
+                        console.log('[VideoPlayer] 🎬 No Firebase timestamp - forcing player to 0');
+                    }
+                } else if (item.tmdbMediaType === 'tv') {
+                    // For TV episodes: read DIRECTLY from nowWatching/episodes subcollection
+                    // This is where timestamps are actually stored and edited
+                    try {
+                        const nowWatchingRef = collection(db, 'users', user.uid, 'nowWatching');
+                        const snapshot = await getDocs(nowWatchingRef);
+                        const docId = `tv_${item.id}`;
+                        const matchingDoc = snapshot.docs.find(doc => doc.id.startsWith(docId));
 
-                if (progress && progress.timestamp > 0 && progress.progress < 90) {
-                    progressParam = `&progress=${Math.floor(progress.timestamp)}`;
+                        let timestamp = 0; // Default to 0
+
+                        if (matchingDoc) {
+                            // Check episodes subcollection
+                            const episodesRef = collection(matchingDoc.ref, 'episodes');
+                            const episodesSnap = await getDocs(episodesRef);
+                            const episodeDocId = `s${selectedSeason}e${selectedEpisode}`;
+                            const episodeDoc = episodesSnap.docs.find(doc => doc.id === episodeDocId);
+
+                            if (episodeDoc) {
+                                const epData = episodeDoc.data();
+                                timestamp = epData.timestamp || 0;
+                                console.log(`[VideoPlayer] 📺 Loaded episode ${episodeDocId} timestamp from Firebase:`, timestamp);
+                            } else {
+                                console.log(`[VideoPlayer] 📺 No Firebase data for ${episodeDocId} - forcing 0`);
+                            }
+                        } else {
+                            console.log('[VideoPlayer] 📺 No nowWatching doc - forcing 0');
+                        }
+
+                        // ALWAYS set progress param, even if 0, to force player to start from 0
+                        if (timestamp > 0) {
+                            progressParam = `&progress=${Math.floor(timestamp)}`;
+                        } else {
+                            progressParam = `&progress=0`; // Force 0 to override player cache
+                        }
+                    } catch (error) {
+                        console.error('[VideoPlayer] Error loading TV timestamp:', error);
+                        progressParam = `&progress=0`; // Force 0 on error
+                    }
                 }
-                // Fallback / Priority: if we loaded a timestamp from nowWatching (movies) and it's missing from granular
-                else if (item.tmdbMediaType === 'movie' && initialResumeTime && initialResumeTime > 0) {
-                    progressParam = `&progress=${Math.floor(initialResumeTime)}`;
-                }
+            } else {
+                // Not logged in - always start from 0
+                progressParam = `&progress=0`;
+                console.log('[VideoPlayer] 👤 Not logged in - starting from 0');
             }
 
             if (item.tmdbMediaType === 'movie') {

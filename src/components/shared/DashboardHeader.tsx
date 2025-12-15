@@ -3,6 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { Sparkles } from 'lucide-react';
 import UserMenu from '@/components/ui/UserMenu';
 import SearchBar from './SearchBar';
 
@@ -57,12 +58,13 @@ export default function DashboardHeader() {
 
                 {/* Right Side - Search + User (User hidden on mobile) */}
                 <div className="flex items-center gap-3 md:gap-4">
-                    {/* Interface Antiga Button (Desktop only) */}
+                    {/* Agente IA Button (Desktop only) */}
                     <Link
-                        href="/dashboard/classic"
-                        className="hidden xl:block px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-xs font-semibold transition-all duration-200 hover:scale-105"
+                        href="/ai"
+                        className="hidden xl:flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500/10 to-blue-500/10 hover:from-purple-500/20 hover:to-blue-500/20 border border-purple-500/30 rounded-full text-xs font-semibold text-purple-300 transition-all duration-200 hover:scale-105"
                     >
-                        Interface Antiga
+                        <Sparkles className="w-4 h-4" />
+                        Agente IA
                     </Link>
 
                     {/* Search Bar */}

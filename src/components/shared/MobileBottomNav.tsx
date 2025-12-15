@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Home, Film, Tv, Search, User } from 'lucide-react';
+import { Home, Film, Tv, Search, User, Sparkles } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import SearchBar from './SearchBar';
@@ -59,6 +59,15 @@ const MobileBottomNav: React.FC = () => {
                         <Search className="w-6 h-6 stroke-2" />
                         <span className="text-[10px] font-medium">Buscar</span>
                     </button>
+
+                    {/* AI Chat Button */}
+                    <Link
+                        href="/ai"
+                        className="flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-all text-gray-400 hover:text-white"
+                    >
+                        <Sparkles className="w-6 h-6 stroke-2" />
+                        <span className="text-[10px] font-medium">IA</span>
+                    </Link>
 
                     {/* Profile Button */}
                     <button

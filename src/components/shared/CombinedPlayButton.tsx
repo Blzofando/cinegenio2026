@@ -202,7 +202,7 @@ const CombinedPlayButton: React.FC<CombinedPlayButtonProps> = ({
                                 : watchStatus === 'resume'
                                     ? 'bg-green-600 hover:bg-green-700'
                                     : watchStatus === 'watched'
-                                        ? 'bg-white/10 hover:bg-white/20 border border-white/20 backdrop-blur-sm shadow-[0_0_15px_rgba(255,255,255,0.1)]'
+                                        ? 'bg-gray-800 hover:bg-gray-700'
                                         : 'bg-red-600 hover:bg-red-700'
                             }`}
                     >
@@ -223,7 +223,7 @@ const CombinedPlayButton: React.FC<CombinedPlayButtonProps> = ({
                             </>
                         ) : watchStatus === 'watched' ? (
                             <>
-                                <Check className="w-5 h-5 fill-current" />
+                                <Check className="w-5 h-5" />
                                 Watched
                             </>
                         ) : (
@@ -264,7 +264,7 @@ const CombinedPlayButton: React.FC<CombinedPlayButtonProps> = ({
                                 : watchStatus === 'resume'
                                     ? 'bg-green-600 hover:bg-green-700 border-black/20'
                                     : watchStatus === 'watched'
-                                        ? 'bg-white/10 hover:bg-white/20 border-white/20 backdrop-blur-md'
+                                        ? 'bg-gray-800 hover:bg-gray-700 border-black/20'
                                         : 'bg-red-600 hover:bg-red-700 border-black/20'
                             }`}
                     >

@@ -29,6 +29,17 @@ export type RatingType = 'amei' | 'gostei' | 'meh' | 'nao_gostei';
 export const generateRatingDocId = (mediaType: 'movie' | 'tv', id: number) => `${mediaType}_${id}`;
 
 /**
+ * Helper to generate Map Key
+ * Series: tv_123
+ * Season: tv_123_S1
+ * Movie: movie_123
+ */
+export const generateRatingKey = (mediaType: 'movie' | 'tv', id: number, season?: number | null) => {
+    if (mediaType === 'tv' && season) return `tv_${id}_S${season}`;
+    return `${mediaType}_${id}`;
+};
+
+/**
  * Marca um item como "assistindo" (watching)
  */
 export async function markAsWatching(
@@ -60,17 +71,6 @@ export async function markAsWatching(
         throw error;
     }
 }
-
-/**
- * Helper to generate Map Key
- * Series: tv_123
- * Season: tv_123_S1
- * Movie: movie_123
- */
-export const generateRatingKey = (mediaType: 'movie' | 'tv', id: number, season?: number | null) => {
-    if (mediaType === 'tv' && season) return `tv_${id}_S${season}`;
-    return `${mediaType}_${id}`;
-};
 
 /**
  * Salva um item como watched com avaliação
@@ -121,7 +121,7 @@ export async function markAsWatched(
             const oldDocRef = doc(db, 'users', userId, 'ratings', r);
             const oldDocSnap = await getDoc(oldDocRef);
             if (oldDocSnap.exists() && oldDocSnap.data()[key]) {
-                const updatePayload: any = {};
+                const updatePayload: { [key: string]: any } = {};
                 updatePayload[key] = deleteField();
                 await updateDoc(oldDocRef, updatePayload);
                 console.log(`[WatchedService] Moved ${key} from ${r} to ${rating}`);
@@ -129,7 +129,7 @@ export async function markAsWatched(
         }
 
         // 3. Save to Target Document
-        const savePayload: any = {};
+        const savePayload: { [key: string]: any } = {};
         savePayload[key] = entryData;
         await setDoc(ratingDocRef, savePayload, { merge: true });
 
@@ -169,7 +169,7 @@ export async function removeFromWatched(
         const key = generateRatingKey(mediaType, itemId, season);
         const docRef = doc(db, 'users', userId, 'ratings', rating);
 
-        const updatePayload: any = {};
+        const updatePayload: { [key: string]: any } = {};
         updatePayload[key] = deleteField();
 
         await updateDoc(docRef, updatePayload);
@@ -196,7 +196,7 @@ export async function checkWatchedStatus(
         const baseKey = `${mediaType}_${itemId}`;
 
         let foundMainRating: RatingType | null = null;
-        let aggregatedHistory: RatingHistory[] = [];
+        const aggregatedHistory: RatingHistory[] = [];
 
         // Fetch ALL 4 docs in parallel
         const docs = await Promise.all(
@@ -225,7 +225,7 @@ export async function checkWatchedStatus(
                                 comment: itemData.comment,
                                 season: itemData.season || (itemData as any).season,
                                 scope: 'season'
-                            } as any);
+                            });
                         }
 
                         if (fieldKey === baseKey) {
@@ -240,7 +240,7 @@ export async function checkWatchedStatus(
         const flatRef = doc(db, 'users', userId, 'ratings', baseKey);
         const flatSnap = await getDoc(flatRef);
         if (flatSnap.exists()) {
-            const data = flatSnap.data();
+            const data = flatSnap.data() as WatchedItem;
             foundMainRating = data.rating;
             if (data.history) aggregatedHistory.push(...data.history);
         }

@@ -25,43 +25,45 @@ export async function GET(request: Request) {
     tasksToRun.push(updateTMDbRadarCache());
     tasksSummary.push("Radar TMDb");
 
-    if (dayOfWeek === 0) { // Domingo
-        console.log("CRON: Hoje é Domingo, executando tarefa do Desafio Semanal.");
-        const watchedItems = await getWatchedItems();
-        const watchedData: AllManagedWatchedData = {
-            amei: watchedItems.filter(i => i.rating === 'amei'),
-            gostei: watchedItems.filter(i => i.rating === 'gostei'),
-            meh: watchedItems.filter(i => i.rating === 'meh'),
-            naoGostei: watchedItems.filter(i => i.rating === 'naoGostei'),
-        };
-        tasksToRun.push(generateNewWeeklyChallenge(watchedData).then(() => { }));
-        tasksSummary.push("Desafio Semanal");
+    // if (dayOfWeek === 0) { // Domingo
+    //     console.log("CRON: Hoje é Domingo, executando tarefa do Desafio Semanal.");
+    //     // TODO: Fix this - getWatchedItems requires userId but cron runs globally
+    //     // const watchedItems = await getWatchedItems();
+    //     // const watchedData: AllManagedWatchedData = {
+    //     //     amei: watchedItems.filter(i => i.rating === 'amei'),
+    //     //     gostei: watchedItems.filter(i => i.rating === 'gostei'),
+    //     //     meh: watchedItems.filter(i => i.rating === 'meh'),
+    //     //     naoGostei: watchedItems.filter(i => i.rating === 'naoGostei'),
+    //     // };
+    //     // tasksToRun.push(generateNewWeeklyChallenge(watchedData).then(() => { }));
+    //     // tasksSummary.push("Desafio Semanal");
 
-    } else if (dayOfWeek === 1) { // Segunda-feira
-        console.log("CRON: Hoje é Segunda, executando tarefa dos Relevantes da Semana.");
-        const watchedItems = await getWatchedItems();
-        const watchedData: AllManagedWatchedData = {
-            amei: watchedItems.filter(i => i.rating === 'amei'),
-            gostei: watchedItems.filter(i => i.rating === 'gostei'),
-            meh: watchedItems.filter(i => i.rating === 'meh'),
-            naoGostei: watchedItems.filter(i => i.rating === 'naoGostei'),
-        };
-        tasksToRun.push(updateWeeklyRelevantsIfNeeded(watchedData));
-        tasksSummary.push("Relevantes da Semana");
+    // } else if (dayOfWeek === 1) { // Segunda-feira
+    //     console.log("CRON: Hoje é Segunda, executando tarefa dos Relevantes da Semana.");
+    //     // TODO: Fix this - getWatchedItems requires userId but cron runs globally
+    //     // const watchedItems = await getWatchedItems();
+    //     // const watchedData: AllManagedWatchedData = {
+    //     //     amei: watchedItems.filter(i => i.rating === 'amei'),
+    //     //     gostei: watchedItems.filter(i => i.rating === 'gostei'),
+    //     //     meh: watchedItems.filter(i => i.rating === 'meh'),
+    //     //     naoGostei: watchedItems.filter(i => i.rating === 'naoGostei'),
+    //     // };
+    //     // tasksToRun.push(updateWeeklyRelevantsIfNeeded(watchedData));
+    //     // tasksSummary.push("Relevantes da Semana");
 
-    } /* else if (dayOfWeek === 2) { // Terça-feira - DISABLED: function doesn't exist
-        console.log("CRON: Hoje é Terça, executando tarefa do Radar Relevante (IA).");
-        tasksToRun.push(updateRelevantReleases());
-        tasksSummary.push("Radar Relevante (IA)");
-    } */
+    // } /* else if (dayOfWeek === 2) { // Terça-feira - DISABLED: function doesn't exist
+    console.log("CRON: Hoje é Terça, executando tarefa do Radar Relevante (IA).");
+    tasksToRun.push(updateRelevantReleases());
+    tasksSummary.push("Radar Relevante (IA)");
+} */
 
-    try {
-        console.log(`CRON: Executando as seguintes tarefas: ${tasksSummary.join(', ')}`);
-        await Promise.all(tasksToRun);
-        console.log("CRON: Tarefas concluídas com sucesso.");
-        return NextResponse.json({ success: true, executed_tasks: tasksSummary });
-    } catch (error) {
-        console.error("CRON: Erro durante a execução das tarefas:", error);
-        return NextResponse.json({ success: false, error: 'Internal Server Error' }, { status: 500 });
-    }
+try {
+    console.log(`CRON: Executando as seguintes tarefas: ${tasksSummary.join(', ')}`);
+    await Promise.all(tasksToRun);
+    console.log("CRON: Tarefas concluídas com sucesso.");
+    return NextResponse.json({ success: true, executed_tasks: tasksSummary });
+} catch (error) {
+    console.error("CRON: Erro durante a execução das tarefas:", error);
+    return NextResponse.json({ success: false, error: 'Internal Server Error' }, { status: 500 });
+}
 }

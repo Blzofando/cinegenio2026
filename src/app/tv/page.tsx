@@ -97,14 +97,10 @@ export default function TVPage() {
 
                 {/* Categorias */}
                 <section>
-                    <div className="px-4 md:px-8 mb-8">
-                        <h2 className="text-4xl font-black text-white">EXPLORAR CATEGORIAS</h2>
-                        <p className="text-gray-400 mt-2">Descubra séries por categoria</p>
-                    </div>
 
                     {topRatedTV.length > 0 && (
                         <CategoryCarousel
-                            title="Mais Bem Avaliadas"
+                            title="MAIS BEM AVALIADAS"
                             items={topRatedTV}
                             categoryUrl="/tv/category/top-rated"
                             isLoading={isLoading}
@@ -113,7 +109,7 @@ export default function TVPage() {
 
                     {popularTV.length > 0 && (
                         <CategoryCarousel
-                            title="Populares"
+                            title="POPULARES"
                             items={popularTV}
                             categoryUrl="/tv/category/popular"
                             isLoading={isLoading}
@@ -122,7 +118,7 @@ export default function TVPage() {
 
                     {onTheAirTV.length > 0 && (
                         <CategoryCarousel
-                            title="No Ar"
+                            title="NO AR"
                             items={onTheAirTV}
                             categoryUrl="/tv/category/on-the-air"
                             isLoading={isLoading}

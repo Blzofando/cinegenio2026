@@ -69,16 +69,20 @@ const SearchBar: React.FC = () => {
     return (
         <div className="relative">
             {/* Search Input */}
-            <div className="relative">
+            <div className="relative group">
                 <input
                     type="text"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     onFocus={() => query && setShowResults(true)}
                     placeholder="Buscar filmes e séries..."
-                    className="w-64 px-4 py-2 pl-10 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
+                    className="w-48 md:w-56 lg:w-64 xl:w-80 px-4 py-2.5 pl-10 
+                               bg-white/5 backdrop-blur-md border border-white/10
+                               rounded-full text-white text-sm placeholder-gray-400
+                               focus:bg-white/10 focus:border-purple-500/50 focus:outline-none focus:ring-2 focus:ring-purple-500/20
+                               transition-all duration-300 hover:bg-white/8"
                 />
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50" />
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-purple-400 transition-colors pointer-events-none" />
                 {query && (
                     <button
                         onClick={() => {
@@ -86,9 +90,9 @@ const SearchBar: React.FC = () => {
                             setResults([]);
                             setShowResults(false);
                         }}
-                        className="absolute right-3 top-1/2 -translate-y-1/2"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 hover:scale-110 transition-transform"
                     >
-                        <X className="w-4 h-4 text-white/50 hover:text-white transition-colors" />
+                        <X className="w-4 h-4 text-gray-400 hover:text-white transition-colors" />
                     </button>
                 )}
             </div>

@@ -58,19 +58,31 @@ export const handlePlayerEvent = async (
 
     // Only save progress on meaningful events
     if (data.event === 'timeupdate' || data.event === 'pause' || data.event === 'ended') {
+        // ✅ Calculate progress if not provided
+        const calculatedProgress = data.progress !== undefined
+            ? data.progress
+            : (data.currentTime && data.duration)
+                ? (data.currentTime / data.duration) * 100
+                : 0;
+
         const progressData: VideoProgress = {
             id: parseInt(data.id),
             mediaType: data.mediaType,
             timestamp: data.currentTime,
             duration: data.duration,
-            progress: data.progress,
+            progress: calculatedProgress, // ✅ Always defined now
             lastUpdated: Date.now(),
             season: data.season,
             episode: data.episode,
             lastServer: (data as any).lastServer || 'videasy', // Track which server was used
         };
 
-        await saveProgress(userId, progressData);
+        // ✅ Filter out undefined fields before saving
+        const cleanedData = Object.fromEntries(
+            Object.entries(progressData).filter(([_, v]) => v !== undefined)
+        ) as VideoProgress;
+
+        await saveProgress(userId, cleanedData);
     }
 };
 

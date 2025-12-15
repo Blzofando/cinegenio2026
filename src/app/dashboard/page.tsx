@@ -123,21 +123,17 @@ export default function DashboardHome() {
                 {/* SEÇÃO: TENDÊNCIAS & LANÇAMENTOS */}
                 {(trending.length > 0 || nowPlaying.length > 0) && (
                     <section>
-                        <div className="px-4 md:px-8 mb-8">
-                            <h2 className="text-4xl font-black text-white">TENDÊNCIAS & LANÇAMENTOS</h2>
-                            <p className="text-gray-400 mt-2">O que está bombando agora</p>
-                        </div>
 
                         {trending.length > 0 && (
                             <MovieCarousel
-                                title="Tendências da Semana"
+                                title="TENDÊNCIAS"
                                 items={trending}
                             />
                         )}
 
                         {nowPlaying.length > 0 && (
                             <MovieCarousel
-                                title="Nos Cinemas"
+                                title="NOS CINEMAS"
                                 items={nowPlaying}
                             />
                         )}

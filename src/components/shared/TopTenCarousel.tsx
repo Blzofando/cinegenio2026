@@ -100,14 +100,14 @@ const TopTenCarousel: React.FC<TopTenCarouselProps> = ({
 
     if (isLoading) {
         return (
-            <div className="mb-12">
-                <div className="mb-6 pl-20">
-                    <div className="h-16 w-80 bg-gray-800 animate-pulse rounded"></div>
+            <div className="mb-8 md:mb-12">
+                <div className="mb-4 md:mb-6 px-4 md:px-6 lg:px-8 xl:px-12">
+                    <div className="h-12 md:h-16 w-64 md:w-80 bg-gray-800 animate-pulse rounded"></div>
                 </div>
-                <div className="flex gap-7 overflow-hidden pl-20">
+                <div className="flex gap-2 sm:gap-3 md:gap-5 lg:gap-6 overflow-hidden px-4 md:px-6 lg:px-8 xl:px-12">
                     {Array.from({ length: 5 }).map((_, i) => (
-                        <div key={i} className="flex-shrink-0 w-56">
-                            <div className="h-72 bg-gray-800 animate-pulse rounded-lg"></div>
+                        <div key={i} className="flex-shrink-0 w-28 sm:w-32 md:w-40 lg:w-48">
+                            <div className="aspect-[2/3] bg-gray-800 animate-pulse rounded-lg"></div>
                         </div>
                     ))}
                 </div>
@@ -117,22 +117,22 @@ const TopTenCarousel: React.FC<TopTenCarouselProps> = ({
 
     return (
         <>
-            <div className="mb-12">
-                {/* Title Section */}
-                <div className="mb-6 flex items-center gap-4 pl-20">
+            <div className="mb-8 md:mb-12">
+                {/* Title Section - Giant and Bold */}
+                <div className="mb-4 md:mb-6 flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 px-4 md:px-6 lg:px-8 xl:px-12">
                     <h2
-                        className="text-4xl md:text-6xl font-black tracking-tight"
+                        className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-black tracking-tight leading-none"
                         style={{
-                            WebkitTextStroke: `2px ${themeColor}`,
+                            WebkitTextStroke: `clamp(1.5px, 0.15vw, 2.5px) ${themeColor}`,
                             WebkitTextFillColor: 'transparent',
                             textShadow: `0 0 15px ${themeColor}40`,
                         }}
                     >
                         {title}
                     </h2>
-                    <div className="text-white">
-                        <div className="text-xs font-bold tracking-widest">{subtitle.split(' ')[0]}</div>
-                        <div className="text-xs font-bold tracking-widest">{subtitle.split(' ')[1] || ''}</div>
+                    <div className="text-white flex sm:flex-col gap-2 sm:gap-0">
+                        <div className="text-[10px] sm:text-xs font-bold tracking-widest uppercase">{subtitle.split(' ')[0]}</div>
+                        <div className="text-[10px] sm:text-xs font-bold tracking-widest uppercase">{subtitle.split(' ')[1] || ''}</div>
                     </div>
                 </div>
 
@@ -162,12 +162,12 @@ const TopTenCarousel: React.FC<TopTenCarouselProps> = ({
 
                     <div
                         ref={scrollRef}
-                        className="flex gap-7 overflow-x-auto pb-4 scrollbar-hide scroll-smooth snap-x snap-mandatory pl-20"
+                        className="flex gap-2 sm:gap-3 md:gap-5 lg:gap-6 overflow-x-auto pb-4 scrollbar-hide scroll-smooth snap-x snap-mandatory px-4 md:px-6 lg:px-8 xl:px-12"
                     >
                         {items.map((item, index) => (
                             <div
                                 key={`${item.id}-${index}`}
-                                className="flex-shrink-0 group/item snap-start w-48"
+                                className="flex-shrink-0 group/item snap-start w-28 sm:w-32 md:w-40 lg:w-48"
                             >
                                 <div className="relative">
                                     {/* Número Estilizado */}

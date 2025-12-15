@@ -99,7 +99,12 @@ const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({ item, onClose }) =>
         if (!movieDetails) return; // Wait for movie details (runtime)
 
         const saveMovie = async () => {
-            const durationSecons = movieDetails.runtime ? movieDetails.runtime * 60 : 0;
+            const durationSeconds = movieDetails.runtime ? movieDetails.runtime * 60 : 0;
+
+            // ✅ PRESERVE existing timestamp instead of always using 0
+            // Use initialResumeTime (loaded from Firebase) or lastTimestamp (from player events)
+            // Only use 0 if no previous progress exists
+            const timestampToSave = initialResumeTime || lastTimestamp || 0;
 
             await saveStartWatching(user.uid, {
                 id: item.id,
@@ -108,14 +113,14 @@ const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({ item, onClose }) =>
                 posterUrl: item.posterUrl || undefined,
                 backdropUrl: item.backdropUrl || undefined,
                 lastServer: server,
-                timestamp: 0,
-                duration: durationSecons,
+                timestamp: timestampToSave,  // ✅ Use existing, not 0
+                duration: durationSeconds,
             });
-            console.log('[VideoPlayer] 💾 Saved movie start to nowWatching with duration:', durationSecons);
+            console.log('[VideoPlayer] 💾 Saved movie to nowWatching - timestamp:', timestampToSave, 'duration:', durationSeconds);
         };
 
         saveMovie();
-    }, [user, initialLoadDone, server, item, movieDetails]);
+    }, [user, initialLoadDone, server, item, movieDetails, initialResumeTime, lastTimestamp]);
 
     // SAVE dual episodes for TV SERIES AFTER loading (current + next)
     useEffect(() => {
@@ -286,6 +291,8 @@ const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({ item, onClose }) =>
             try {
                 const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
 
+                // Player messages received (debug removed to reduce console spam)
+
                 if (data?.type === 'PLAYER_EVENT' && user) {
                     const eventData = {
                         ...data.data,
@@ -298,7 +305,7 @@ const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({ item, onClose }) =>
                     if (data.data.currentTime !== undefined && data.data.duration) {
                         const currentProgress = (data.data.currentTime / data.data.duration) * 100;
 
-                        // Rastrear último timestamp
+                        // Rastrear último timestamp (log removed)
                         setLastTimestamp(Math.floor(data.data.currentTime));
                         setLastDuration(Math.floor(data.data.duration));
                         lastTimestampRef.current = Math.floor(data.data.currentTime);
@@ -364,6 +371,26 @@ const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({ item, onClose }) =>
         window.addEventListener('message', handleMessage);
         return () => window.removeEventListener('message', handleMessage);
     }, [user, server, item, tvDetails, selectedSeason, selectedEpisode]);
+
+    // ✅ AUTOMATIC TIMESTAMP TRACKING
+    // Auto-save last known timestamp every 10 minutes
+    useEffect(() => {
+        if (!playerUrl || showEpisodeSelector) return;
+
+        // Auto-save last known timestamp every 10 minutes
+        const autoSaveInterval = setInterval(() => {
+            if (lastTimestampRef.current > 0 && user) {
+                console.log('[VideoPlayer] 💾 Auto-saving timestamp (10min interval):', lastTimestampRef.current, 's');
+                saveCurrentProgress();
+            }
+        }, 600000); // Every 10 minutes (600,000ms)
+
+        return () => {
+            clearInterval(autoSaveInterval);
+        };
+    }, [playerUrl, showEpisodeSelector, user]);
+
+
 
     const handleEpisodeSelect = (season: number, episode: number) => {
         setSelectedSeason(season);

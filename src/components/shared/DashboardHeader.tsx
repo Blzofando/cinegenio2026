@@ -12,39 +12,55 @@ export default function DashboardHeader() {
     const isActive = (path: string) => pathname === path;
 
     return (
-        <div className="sticky top-0 z-50 bg-black/80 backdrop-blur-md border-b border-white/10">
-            <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-                <div className="flex items-center gap-8">
-                    <Link href="/dashboard" className="text-2xl font-black bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent">
+        <div className="sticky top-0 z-50 bg-black/90 backdrop-blur-xl" style={{ boxShadow: '0 20px 60px rgba(0, 0, 0, 0.8)' }}>
+            <div className="max-w-[1920px] mx-auto px-4 md:px-6 lg:px-8 py-4 flex items-center justify-between gap-4">
+                {/* Logo */}
+                <div className="flex items-center gap-6 md:gap-8">
+                    <Link
+                        href="/dashboard"
+                        className="text-2xl md:text-3xl font-black bg-gradient-to-r from-purple-500 via-pink-500 to-purple-600 bg-clip-text text-transparent hover:scale-105 transition-transform"
+                    >
                         CINEGÊNIO
                     </Link>
 
-                    <nav className="hidden md:flex gap-6">
+                    {/* Desktop Navigation */}
+                    <nav className="hidden lg:flex gap-6">
                         <Link
                             href="/dashboard"
-                            className={`text - sm font - bold transition - colors ${isActive('/dashboard') ? 'text-white' : 'text-gray-400 hover:text-white'} `}
+                            className={`text-sm font-bold transition-all duration-200 ${isActive('/dashboard')
+                                ? 'text-white'
+                                : 'text-gray-400 hover:text-white'
+                                }`}
                         >
                             PÁGINA INICIAL
                         </Link>
                         <Link
                             href="/movies"
-                            className={`text - sm font - bold transition - colors ${isActive('/movies') ? 'text-white' : 'text-gray-400 hover:text-white'} `}
+                            className={`text-sm font-bold transition-all duration-200 ${isActive('/movies')
+                                ? 'text-white'
+                                : 'text-gray-400 hover:text-white'
+                                }`}
                         >
                             FILMES
                         </Link>
                         <Link
                             href="/tv"
-                            className={`text - sm font - bold transition - colors ${isActive('/tv') ? 'text-white' : 'text-gray-400 hover:text-white'} `}
+                            className={`text-sm font-bold transition-all duration-200 ${isActive('/tv')
+                                ? 'text-white'
+                                : 'text-gray-400 hover:text-white'
+                                }`}
                         >
                             SÉRIES
                         </Link>
                     </nav>
                 </div>
 
-                <div className="flex items-center gap-4">
+                {/* Right Side - Search + User */}
+                <div className="flex items-center gap-3 md:gap-4">
+                    {/* Interface Antiga Button (Desktop only) */}
                     <Link
                         href="/dashboard/classic"
-                        className="hidden md:block px-4 py-1.5 bg-white/10 hover:bg-white/20 border border-white/10 rounded-full text-xs font-medium transition-all"
+                        className="hidden xl:block px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-xs font-semibold transition-all duration-200 hover:scale-105"
                     >
                         Interface Antiga
                     </Link>
@@ -52,6 +68,7 @@ export default function DashboardHeader() {
                     {/* Search Bar */}
                     <SearchBar />
 
+                    {/* User Menu */}
                     <UserMenu />
                 </div>
             </div>

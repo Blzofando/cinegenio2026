@@ -45,15 +45,15 @@ const CategoryCarousel: React.FC<CategoryCarouselProps> = ({ title, items, categ
 
     if (isLoading) {
         return (
-            <div className="mb-10">
-                <div className="flex justify-between items-center mb-4 pl-20 pr-4">
-                    <div className="h-8 w-64 bg-gray-800 animate-pulse rounded"></div>
-                    <div className="h-10 w-32 bg-gray-800 animate-pulse rounded"></div>
+            <div className="mb-8 md:mb-10">
+                <div className="flex justify-between items-center mb-3 md:mb-4 px-4 md:px-6 lg:px-8 xl:px-12">
+                    <div className="h-6 md:h-8 w-48 md:w-64 bg-gray-800 animate-pulse rounded"></div>
+                    <div className="h-8 w-24 bg-gray-800 animate-pulse rounded"></div>
                 </div>
-                <div className="flex gap-7 overflow-hidden pl-20">
+                <div className="flex gap-2 sm:gap-3 md:gap-5 lg:gap-6 overflow-hidden px-4 md:px-6 lg:px-8 xl:px-12">
                     {Array.from({ length: 6 }).map((_, i) => (
-                        <div key={i} className="flex-shrink-0" style={{ width: 'clamp(224px, 16vw, 256px)' }}>
-                            <div className="h-72 bg-gray-800 animate-pulse rounded-lg"></div>
+                        <div key={i} className="flex-shrink-0 w-28 sm:w-32 md:w-40 lg:w-48">
+                            <div className="aspect-[2/3] bg-gray-800 animate-pulse rounded-lg"></div>
                         </div>
                     ))}
                 </div>
@@ -63,16 +63,19 @@ const CategoryCarousel: React.FC<CategoryCarouselProps> = ({ title, items, categ
 
     return (
         <>
-            <div className="mb-10">
+            <div className="mb-8 md:mb-10">
                 {/* Title & Show More */}
-                <div className="flex justify-between items-center mb-4 pl-20 pr-4">
-                    <h2 className="text-2xl font-bold">{title}</h2>
+                <div className="flex justify-between items-center mb-3 md:mb-4 px-4 md:px-6 lg:px-8 xl:px-12">
+                    <div className="flex items-center gap-3">
+                        <div className="h-6 md:h-8 w-1 bg-purple-500"></div>
+                        <h2 className="text-lg sm:text-xl md:text-2xl font-bold">{title}</h2>
+                    </div>
                     <Link
                         href={categoryUrl}
-                        className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg font-semibold transition-colors text-sm"
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-gray-400 hover:text-white border border-white/10 hover:border-white/30 rounded-lg font-medium transition-all text-xs md:text-sm"
                     >
                         Exibir Mais
-                        <ArrowRight className="w-4 h-4" />
+                        <ArrowRight className="w-3 h-3 md:w-4 md:h-4" />
                     </Link>
                 </div>
 
@@ -100,12 +103,12 @@ const CategoryCarousel: React.FC<CategoryCarouselProps> = ({ title, items, categ
 
                     <div
                         ref={scrollRef}
-                        className="flex gap-7 overflow-x-auto pb-4 scrollbar-hide scroll-smooth snap-x snap-mandatory pl-20"
+                        className="flex gap-2 sm:gap-3 md:gap-5 lg:gap-6 overflow-x-auto pb-4 scrollbar-hide scroll-smooth snap-x snap-mandatory px-4 md:px-6 lg:px-8 xl:px-12"
                     >
                         {items.map((item, index) => (
                             <div
                                 key={`${item.id}-${index}`}
-                                className="flex-shrink-0 group/item snap-start w-48"
+                                className="flex-shrink-0 group/item snap-start w-28 sm:w-32 md:w-40 lg:w-48"
                             >
                                 <div
                                     className="relative overflow-hidden rounded-lg shadow-lg"

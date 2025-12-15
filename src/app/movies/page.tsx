@@ -117,14 +117,10 @@ export default function MoviesPage() {
 
                 {/* Categorias */}
                 <section>
-                    <div className="px-4 md:px-8 mb-8">
-                        <h2 className="text-4xl font-black text-white">EXPLORAR CATEGORIAS</h2>
-                        <p className="text-gray-400 mt-2">Descubra filmes por categoria</p>
-                    </div>
 
                     {topRatedMovies.length > 0 && (
                         <CategoryCarousel
-                            title="Mais Bem Avaliados"
+                            title="MAIS BEM AVALIADOS"
                             items={topRatedMovies}
                             categoryUrl="/movies/category/top-rated"
                             isLoading={isLoading}
@@ -133,7 +129,7 @@ export default function MoviesPage() {
 
                     {popularMovies.length > 0 && (
                         <CategoryCarousel
-                            title="Populares"
+                            title="POPULARES"
                             items={popularMovies}
                             categoryUrl="/movies/category/popular"
                             isLoading={isLoading}
@@ -142,7 +138,7 @@ export default function MoviesPage() {
 
                     {nowPlayingMovies.length > 0 && (
                         <CategoryCarousel
-                            title="Nos Cinemas"
+                            title="NOS CINEMAS"
                             items={nowPlayingMovies}
                             categoryUrl="/movies/category/now-playing"
                             isLoading={isLoading}
@@ -151,7 +147,7 @@ export default function MoviesPage() {
 
                     {upcomingMovies.length > 0 && (
                         <CategoryCarousel
-                            title="Em Breve"
+                            title="EM BREVE"
                             items={upcomingMovies}
                             categoryUrl="/movies/category/upcoming"
                             isLoading={isLoading}

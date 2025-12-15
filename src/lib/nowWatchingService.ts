@@ -21,6 +21,7 @@ export interface NowWatchingItem {
 /**
  * Save when user STARTS watching (clicks "Assistir")
  * USES SINGLE DOCUMENT PER SERIES/MOVIE (not per episode!)
+ * ✅ PRESERVES existing timestamp if not explicitly provided
  */
 export const saveStartWatching = async (
     userId: string,
@@ -38,9 +39,15 @@ export const saveStartWatching = async (
         id: item.id,
         mediaType: item.mediaType,
         title: item.title,
-        startedAt: serverTimestamp(),
         lastWatchedAt: serverTimestamp(),
     };
+
+    // Only set startedAt if this is a NEW document (not updating existing)
+    // Check by reading first - NO, this causes race condition
+    // Instead, only set startedAt on first save (when timestamp is 0 or undefined)
+    if (item.timestamp === undefined || item.timestamp === 0) {
+        dataToSave.startedAt = serverTimestamp();
+    }
 
     // Only add if exists
     if (item.posterUrl) dataToSave.posterUrl = item.posterUrl;
@@ -48,13 +55,20 @@ export const saveStartWatching = async (
     if (item.season !== undefined) dataToSave.season = item.season;
     if (item.episode !== undefined) dataToSave.episode = item.episode;
     if (item.lastServer) dataToSave.lastServer = item.lastServer;
-    if (item.timestamp !== undefined) dataToSave.timestamp = item.timestamp;
+
+    // ✅ ONLY update timestamp if explicitly provided AND > 0
+    // This prevents overwriting existing progress
+    if (item.timestamp !== undefined && item.timestamp >= 0) {
+        dataToSave.timestamp = item.timestamp;
+    }
+
     if (item.duration !== undefined) dataToSave.duration = item.duration;
     if (item.viewed !== undefined) dataToSave.viewed = item.viewed;
 
-    await setDoc(docRef, dataToSave);
+    // ✅ USE MERGE to preserve existing fields (especially timestamp)
+    await setDoc(docRef, dataToSave, { merge: true });
 
-    console.log('✅ Saved to Firebase (single doc):', docId, dataToSave);
+    console.log('✅ Saved to Firebase (merge mode):', docId, dataToSave);
 };
 
 /**

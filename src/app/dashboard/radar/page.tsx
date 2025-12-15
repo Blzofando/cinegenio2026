@@ -3,7 +3,7 @@
 "use client";
 
 import React, { useState, useContext, useEffect, useMemo } from 'react';
-import { collection, onSnapshot } from 'firebase/firestore';
+import { collection, doc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { WatchedDataContext } from '@/contexts/WatchedDataContext';
 import { WatchlistContext } from '@/contexts/WatchlistContext';
@@ -78,6 +78,8 @@ export default function RadarPage() {
     const [isRelevantLoading, setIsRelevantLoading] = useState(true);
     const [isLoading, setIsLoading] = useState(true);
     const [tmdbCache, setTmdbCache] = useState<RadarItem[]>([]);
+    const [trending, setTrending] = useState<RadarItem[]>([]);
+    const [nowPlaying, setNowPlaying] = useState<RadarItem[]>([]);
     const [relevantReleases, setRelevantReleases] = useState<RadarItem[]>([]);
     const [selectedItem, setSelectedItem] = useState<DisplayableItem | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -90,6 +92,29 @@ export default function RadarPage() {
             return;
         }
 
+        // Listen to public/trending
+        const unsubTrending = onSnapshot(doc(db, 'public', 'trending'), (docSnap) => {
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                setTrending(data.items || []);
+            } else {
+                setTrending([]);
+            }
+        });
+
+        // Listen to public/now-playing
+        const unsubNowPlaying = onSnapshot(doc(db, 'public', 'now-playing'), (docSnap) => {
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                setNowPlaying((data.items || []).sort((a: RadarItem, b: RadarItem) =>
+                    new Date(b.releaseDate).getTime() - new Date(a.releaseDate).getTime()
+                ));
+            } else {
+                setNowPlaying([]);
+            }
+        });
+
+        // Still load TMDb cache for provider-specific lists (Netflix, Prime, etc.)
         const unsubTMDb = onSnapshot(
             collection(db, 'users', user.uid, 'tmdbRadarCache'),
             (snapshot) => {
@@ -120,6 +145,8 @@ export default function RadarPage() {
         );
 
         return () => {
+            unsubTrending();
+            unsubNowPlaying();
             unsubTMDb();
             unsubRelevant();
         };
@@ -153,8 +180,6 @@ export default function RadarPage() {
         );
     };
 
-    const nowPlaying = useMemo(() => tmdbCache.filter(r => r.listType === 'now_playing').sort((a, b) => new Date(b.releaseDate).getTime() - new Date(a.releaseDate).getTime()), [tmdbCache]);
-    const trending = useMemo(() => tmdbCache.filter(r => r.listType === 'trending'), [tmdbCache]);
     const topNetflix = useMemo(() => tmdbCache.filter(r => r.providerId === 8), [tmdbCache]);
     const topPrime = useMemo(() => tmdbCache.filter(r => r.providerId === 119), [tmdbCache]);
     const topMax = useMemo(() => tmdbCache.filter(r => r.providerId === 1899), [tmdbCache]);

@@ -32,9 +32,13 @@ const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({ item, onClose }) =>
     const [playerUrl, setPlayerUrl] = useState<string>('');
     const [showServerButton, setShowServerButton] = useState(false);
     const [tvDetails, setTvDetails] = useState<any>(null);
+    const [movieDetails, setMovieDetails] = useState<any>(null);
     const [initialLoadDone, setInitialLoadDone] = useState(false);
     const [lastTimestamp, setLastTimestamp] = useState<number>(0);
     const [lastDuration, setLastDuration] = useState<number>(0);
+    const lastTimestampRef = React.useRef<number>(0); // Ref for immediate access in handlers
+    const lastDurationRef = React.useRef<number>(0);
+    const [initialResumeTime, setInitialResumeTime] = useState<number | null>(null);
 
     console.log('[VideoPlayer] Initial state:', { hasEpisodeInfo, selectedSeason, selectedEpisode, item });
 
@@ -65,6 +69,13 @@ const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({ item, onClose }) =>
                         console.log('[VideoPlayer] 🎯 Server set to:', data.lastServer);
                     }
 
+                    // ✅ Resume timestamp from nowWatching (for movies)
+                    if (item.tmdbMediaType === 'movie' && data.timestamp && data.timestamp > 0) {
+                        setLastTimestamp(data.timestamp); // Store for saving later
+                        setInitialResumeTime(data.timestamp); // Store for URL generation
+                        console.log('[VideoPlayer] 🕒 Loaded timestamp from nowWatching:', data.timestamp);
+                    }
+
                     if (item.tmdbMediaType === 'tv' && data.season && data.episode) {
                         setSelectedSeason(data.season);
                         setSelectedEpisode(data.episode);
@@ -85,21 +96,26 @@ const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({ item, onClose }) =>
     useEffect(() => {
         if (!user || !initialLoadDone) return;
         if (item.tmdbMediaType !== 'movie') return; // Only movies
+        if (!movieDetails) return; // Wait for movie details (runtime)
 
         const saveMovie = async () => {
+            const durationSecons = movieDetails.runtime ? movieDetails.runtime * 60 : 0;
+
             await saveStartWatching(user.uid, {
                 id: item.id,
                 mediaType: item.tmdbMediaType,
                 title: item.title || item.name || 'Unknown',
                 posterUrl: item.posterUrl || undefined,
-                backdropUrl: item.backdropUrl || undefined, // Save backdrop for 16:9
+                backdropUrl: item.backdropUrl || undefined,
                 lastServer: server,
+                timestamp: 0,
+                duration: durationSecons,
             });
-            console.log('[VideoPlayer] 💾 Saved movie to nowWatching:', item.title);
+            console.log('[VideoPlayer] 💾 Saved movie start to nowWatching with duration:', durationSecons);
         };
 
         saveMovie();
-    }, [user, initialLoadDone, server, item]);
+    }, [user, initialLoadDone, server, item, movieDetails]);
 
     // SAVE dual episodes for TV SERIES AFTER loading (current + next)
     useEffect(() => {
@@ -172,6 +188,26 @@ const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({ item, onClose }) =>
         };
 
         fetchTVDetails();
+        fetchTVDetails();
+    }, [item.id, item.tmdbMediaType]);
+
+    // Fetch MOVIE details (for runtime)
+    useEffect(() => {
+        if (item.tmdbMediaType !== 'movie') return;
+
+        const fetchMovieDetails = async () => {
+            try {
+                const response = await fetch(
+                    `https://api.themoviedb.org/3/movie/${item.id}?api_key=${process.env.NEXT_PUBLIC_TMDB_API_KEY}&language=pt-BR`
+                );
+                const data = await response.json();
+                setMovieDetails(data);
+            } catch (error) {
+                console.error('Error fetching movie details:', error);
+            }
+        };
+
+        fetchMovieDetails();
     }, [item.id, item.tmdbMediaType]);
 
     // Save server changes IMMEDIATELY to Firebase
@@ -213,6 +249,7 @@ const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({ item, onClose }) =>
             let progressParam = '';
 
             if (user) {
+                // First check getting granular progress
                 const progress = await getProgress(
                     user.uid,
                     item.id,
@@ -223,6 +260,10 @@ const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({ item, onClose }) =>
 
                 if (progress && progress.timestamp > 0 && progress.progress < 90) {
                     progressParam = `&progress=${Math.floor(progress.timestamp)}`;
+                }
+                // Fallback / Priority: if we loaded a timestamp from nowWatching (movies) and it's missing from granular
+                else if (item.tmdbMediaType === 'movie' && initialResumeTime && initialResumeTime > 0) {
+                    progressParam = `&progress=${Math.floor(initialResumeTime)}`;
                 }
             }
 
@@ -237,7 +278,7 @@ const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({ item, onClose }) =>
         };
 
         buildUrl();
-    }, [server, item, selectedSeason, selectedEpisode, showEpisodeSelector, user]);
+    }, [server, item, selectedSeason, selectedEpisode, showEpisodeSelector, user, initialResumeTime]);
 
     // Listen to postMessage
     useEffect(() => {
@@ -260,6 +301,8 @@ const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({ item, onClose }) =>
                         // Rastrear último timestamp
                         setLastTimestamp(Math.floor(data.data.currentTime));
                         setLastDuration(Math.floor(data.data.duration));
+                        lastTimestampRef.current = Math.floor(data.data.currentTime);
+                        lastDurationRef.current = Math.floor(data.data.duration);
 
                         // At 90%, swap display (current->viewed:false, next->viewed:true)
                         if (item.tmdbMediaType === 'tv' && currentProgress >= 90 && user) {
@@ -332,33 +375,37 @@ const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({ item, onClose }) =>
         setServer(prev => prev === 'videasy' ? 'vidking' : 'videasy');
     };
 
+    const saveCurrentProgress = async () => {
+        if (!user || lastTimestampRef.current <= 0) return;
+
+        try {
+            if (item.tmdbMediaType === 'tv') {
+                const seriesDocRef = firestoreDoc(db, 'users', user.uid, 'nowWatching', `tv_${item.id}`);
+                const episodesRef = collection(seriesDocRef, 'episodes');
+                const currentEpId = `s${selectedSeason}e${selectedEpisode}`;
+                const currentEpRef = firestoreDoc(episodesRef, currentEpId);
+                await setDoc(currentEpRef, {
+                    timestamp: lastTimestampRef.current,
+                    duration: lastDurationRef.current,
+                    lastWatchedAt: serverTimestamp(),
+                }, { merge: true });
+            } else if (item.tmdbMediaType === 'movie') {
+                const movieDocRef = firestoreDoc(db, 'users', user.uid, 'nowWatching', `movie_${item.id}`);
+                await setDoc(movieDocRef, {
+                    timestamp: lastTimestampRef.current,
+                    duration: lastDurationRef.current,
+                    lastWatchedAt: serverTimestamp(),
+                }, { merge: true });
+            }
+            console.log(`[VideoPlayer] 💾 Final timestamp saved: ${lastTimestampRef.current}s`);
+        } catch (error) {
+            console.error('[VideoPlayer] Error saving progress:', error);
+        }
+    };
+
     const handleClose = async () => {
         // Salvar último timestamp ANTES de fechar
-        if (user && lastTimestamp > 0) {
-            try {
-                if (item.tmdbMediaType === 'tv') {
-                    const seriesDocRef = firestoreDoc(db, 'users', user.uid, 'nowWatching', `tv_${item.id}`);
-                    const episodesRef = collection(seriesDocRef, 'episodes');
-                    const currentEpId = `s${selectedSeason}e${selectedEpisode}`;
-                    const currentEpRef = firestoreDoc(episodesRef, currentEpId);
-                    await setDoc(currentEpRef, {
-                        timestamp: lastTimestamp,
-                        duration: lastDuration,
-                        lastWatchedAt: serverTimestamp(),
-                    }, { merge: true });
-                } else if (item.tmdbMediaType === 'movie') {
-                    const movieDocRef = firestoreDoc(db, 'users', user.uid, 'nowWatching', `movie_${item.id}`);
-                    await setDoc(movieDocRef, {
-                        timestamp: lastTimestamp,
-                        duration: lastDuration,
-                        lastWatchedAt: serverTimestamp(),
-                    }, { merge: true });
-                }
-                console.log(`[VideoPlayer] 💾 Final timestamp: ${lastTimestamp}s`);
-            } catch (error) {
-                console.error('[VideoPlayer] Error:', error);
-            }
-        }
+        await saveCurrentProgress();
 
         if (user) {
             await saveStopWatching(
@@ -438,6 +485,7 @@ const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({ item, onClose }) =>
                 }
 
                 // Normal close - just update lastWatchedAt
+                await saveCurrentProgress(); // ✅ NOW SAVES PROGRESS TOO!
                 await saveStopWatching(
                     user.uid,
                     item.id,

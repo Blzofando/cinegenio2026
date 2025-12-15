@@ -68,6 +68,7 @@ export interface Challenge {
 export interface RadarItem {
   id: number;
   tmdbMediaType: 'movie' | 'tv';
+  media_type?: 'movie' | 'tv'; // For compatibility with category pages
   title: string;
   posterUrl?: string;
   releaseDate: string;

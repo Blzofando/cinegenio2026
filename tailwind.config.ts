@@ -18,7 +18,7 @@ const config: Config = {
           // NOVAS CORES ADICIONADAS
           dark: "#080033",
           neon: "#4800E2",
-      highlight: "#8E00FF",
+          highlight: "#8E00FF",
         },
       },
       keyframes: {
@@ -41,6 +41,7 @@ const config: Config = {
       animation: {
         float: "float 3s ease-in-out infinite",
         glow: "glow 2.5s ease-in-out infinite",
+        shimmer: "shimmer 2s infinite",
         pulseRing: "pulseRing 2s ease-out infinite",
       },
     },

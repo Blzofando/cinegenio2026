@@ -48,6 +48,7 @@ const toTMDbRadarItem = (item: TMDbSearchResult, listType: TMDbRadarItem['listTy
     const radarItem: TMDbRadarItem = {
         id: item.id,
         tmdbMediaType: mediaType,
+        media_type: mediaType, // Add for compatibility with category pages
         title: titleWithYear || 'Título Desconhecido',
         releaseDate: releaseDate,
         type: mediaType,
@@ -179,10 +180,32 @@ export const updateTMDbRadarCache = async (): Promise<void> => {
             });
         }
 
+        // Save popular-movies
+        const popularMoviesItems = allItemsArray.filter(i => i.listType === 'popular' && i.tmdbMediaType === 'movie');
+        if (popularMoviesItems.length > 0) {
+            await setDoc(doc(db, 'public', 'popular-movies'), {
+                items: popularMoviesItems,
+                lastUpdated: now,
+                expiresAt,
+                cacheType: 'popular-movies'
+            });
+        }
+
+        // Save popular-tv
+        const popularTVItems = allItemsArray.filter(i => i.listType === 'popular' && i.tmdbMediaType === 'tv');
+        if (popularTVItems.length > 0) {
+            await setDoc(doc(db, 'public', 'popular-tv'), {
+                items: popularTVItems,
+                lastUpdated: now,
+                expiresAt,
+                cacheType: 'popular-tv'
+            });
+        }
+
         await setDoc(doc(db, 'metadata', METADATA_TMDb_ID), { lastUpdate: new Date() });
 
         console.log(`Cache do Radar TMDb atualizado! ${allItemsMap.size} itens salvos.`);
-        console.log(`[Public Cache] Saved to public: trending(${trendingItems.length}), now-playing(${nowPlayingItems.length}), upcoming(${upcomingItems.length}), on-the-air(${onTheAirItems.length})`);
+        console.log(`[Public Cache] Saved to public: trending(${trendingItems.length}), now-playing(${nowPlayingItems.length}), upcoming(${upcomingItems.length}), on-the-air(${onTheAirItems.length}), popular-movies(${popularMoviesItems.length}), popular-tv(${popularTVItems.length})`);
     } catch (error) {
         console.error("Falha ao atualizar o cache do Radar TMDb:", error);
     }

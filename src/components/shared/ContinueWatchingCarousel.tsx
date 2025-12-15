@@ -29,25 +29,44 @@ const ContinueWatchingCarousel: React.FC<ContinueWatchingCarouselProps> = ({ med
             return;
         }
 
+        let isMounted = true;
+
         const loadItems = async () => {
             try {
                 const data = await getContinueWatchingItems(user.uid);
-                console.log('[ContinueWatching] Smart resume loaded:', data);
-
-                // Filter by mediaType if provided
-                const filteredData = mediaType
-                    ? data.filter(item => item.mediaType === mediaType)
-                    : data;
-
-                setItems(filteredData);
+                if (isMounted) {
+                    // Filter by mediaType if provided
+                    const filteredData = mediaType
+                        ? data.filter(item => item.mediaType === mediaType)
+                        : data;
+                    setItems(filteredData);
+                    setLoading(false);
+                }
             } catch (error) {
                 console.error('[ContinueWatching] Error:', error);
-            } finally {
-                setLoading(false);
+                if (isMounted) setLoading(false);
             }
         };
 
+        // Initial load
         loadItems();
+
+        // Realtime listener for updates
+        import('firebase/firestore').then(({ collection, onSnapshot }) => {
+            const nowWatchingRef = collection(db, 'users', user.uid, 'nowWatching');
+            const unsubscribe = onSnapshot(nowWatchingRef, (snapshot) => {
+                // When any document changes, reload the smart list
+                // (Optimized: only reload if not local change? hard to do, just reload for now)
+                console.log('[ContinueWatching] Update detected, reloading...');
+                loadItems();
+            });
+
+            return () => unsubscribe();
+        });
+
+        return () => {
+            isMounted = false;
+        };
     }, [user, mediaType]);
 
     const handleCardClick = (item: ResumeData) => {
@@ -89,6 +108,10 @@ const ContinueWatchingCarousel: React.FC<ContinueWatchingCarouselProps> = ({ med
         e.stopPropagation();
 
         if (!user) return;
+
+        if (!window.confirm(`Tem certeza que deseja remover "${item.title}" do histórico?`)) {
+            return;
+        }
 
         try {
             const docId = item.mediaType === 'movie'

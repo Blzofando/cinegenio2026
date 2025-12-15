@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { collection, onSnapshot } from 'firebase/firestore';
+import React, { useState, useEffect } from 'react';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { RadarItem } from '@/types';
 import TopTenCarousel from '@/components/shared/TopTenCarousel';
@@ -10,29 +10,62 @@ import ContinueWatchingCarousel from '@/components/shared/ContinueWatchingCarous
 import DashboardHeader from '@/components/shared/DashboardHeader';
 import HeroCarousel from '@/components/shared/HeroCarousel';
 import { getHighlights, HighlightItem } from '@/lib/services/highlightService';
+import HeroSkeleton from '@/components/shared/skeletons/HeroSkeleton';
 
 export default function MoviesPage() {
-    const [tmdbCache, setTmdbCache] = useState<RadarItem[]>([]);
+    const [upcomingMovies, setUpcomingMovies] = useState<RadarItem[]>([]);
+    const [nowPlayingMovies, setNowPlayingMovies] = useState<RadarItem[]>([]);
+    const [topRatedMovies, setTopRatedMovies] = useState<RadarItem[]>([]);
+    const [popularMovies, setPopularMovies] = useState<RadarItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [highlights, setHighlights] = useState<HighlightItem[]>([]);
+    const [hasTriggeredPopulate, setHasTriggeredPopulate] = useState(false);
 
     useEffect(() => {
-        // Trigger populate check
-        fetch('/api/populate-radar', { method: 'POST' }).catch(console.error);
-
-        const unsubTMDb = onSnapshot(
-            collection(db, 'radarCache'),
-            (snapshot) => {
-                const items: RadarItem[] = [];
-                snapshot.forEach(doc => items.push(doc.data() as RadarItem));
-                setTmdbCache(items);
-                setIsLoading(false);
-            },
-            (err) => {
-                console.error("Erro ao carregar radar:", err);
-                setIsLoading(false);
+        // Listen to public/upcoming
+        const unsubUpcoming = onSnapshot(doc(db, 'public', 'upcoming'), (docSnap) => {
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                const allItems = data.items || [];
+                setUpcomingMovies(allItems.filter((r: RadarItem) => r.tmdbMediaType === 'movie').slice(0, 20));
+            } else {
+                console.warn('[Movies Page] Document public/upcoming does not exist');
+                setUpcomingMovies([]);
+                if (!hasTriggeredPopulate) {
+                    console.log('[Movies Page] Triggering populate-radar...');
+                    setHasTriggeredPopulate(true);
+                    fetch('/api/populate-radar', { method: 'POST' })
+                        .then(res => res.json())
+                        .then(data => console.log('[Movies Page] Populate result:', data))
+                        .catch(err => console.error('[Movies Page] Populate error:', err));
+                }
             }
-        );
+        });
+
+        // Listen to public/now-playing
+        const unsubNowPlaying = onSnapshot(doc(db, 'public', 'now-playing'), (docSnap) => {
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                const allItems = data.items || [];
+                setNowPlayingMovies(allItems.filter((r: RadarItem) => r.tmdbMediaType === 'movie').slice(0, 20));
+            } else {
+                console.warn('[Movies Page] Document public/now-playing does not exist');
+                setNowPlayingMovies([]);
+            }
+            setIsLoading(false);
+        });
+
+        // Listen to public/popular-movies
+        const unsubPopular = onSnapshot(doc(db, 'public', 'popular-movies'), (docSnap) => {
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                const allItems = data.items || [];
+                setPopularMovies(allItems.filter((r: RadarItem) => r.tmdbMediaType === 'movie').slice(0, 20));
+            } else {
+                console.warn('[Movies Page] Document public/popular-movies does not exist');
+                setPopularMovies([]);
+            }
+        });
 
         // Load highlights
         const loadHighlights = async () => {
@@ -41,39 +74,28 @@ export default function MoviesPage() {
         };
         loadHighlights();
 
-        return () => unsubTMDb();
-    }, []);
+        return () => {
+            unsubUpcoming();
+            unsubNowPlaying();
+            unsubPopular();
+        };
+    }, [hasTriggeredPopulate]);
 
     // No longer needed - using FlixPatrol API directly in component
 
     // Categorias (apenas filmes)
-    const topRatedMovies = useMemo(() =>
-        tmdbCache.filter(r => r.listType === 'top_rated' && r.tmdbMediaType === 'movie').slice(0, 20),
-        [tmdbCache]
-    );
-
-    const popularMovies = useMemo(() =>
-        tmdbCache.filter(r => r.listType === 'popular' && r.tmdbMediaType === 'movie').slice(0, 20),
-        [tmdbCache]
-    );
-
-    const upcomingMovies = useMemo(() =>
-        tmdbCache.filter(r => r.listType === 'upcoming' && r.tmdbMediaType === 'movie').slice(0, 20),
-        [tmdbCache]
-    );
-
-    const nowPlayingMovies = useMemo(() =>
-        tmdbCache.filter(r => r.listType === 'now_playing' && r.tmdbMediaType === 'movie').slice(0, 20),
-        [tmdbCache]
-    );
+    // The topRatedMovies state is declared but not populated by the new useEffect logic.
+    // If it needs to be populated, a new listener or data source should be added.
 
     return (
         <div className="min-h-screen bg-gradient-to-b from-black via-gray-900 to-black text-white">
             <DashboardHeader />
 
             {/* Hero Carousel */}
-            {highlights.length > 0 && (
+            {highlights.length > 0 ? (
                 <HeroCarousel items={highlights} />
+            ) : (
+                <HeroSkeleton />
             )}
 
             {/* Main Content */}

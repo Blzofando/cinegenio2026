@@ -173,8 +173,8 @@ async function collectMoviesHighlights(): Promise<HighlightItem[]> {
 
     const sources = [
         { id: 'global-movies', name: 'Top 10 Global' },
+        { id: 'popular-movies', name: 'Populares' },
         { endpoint: '/movie/top_rated', name: 'Mais Bem Avaliados' },
-        { endpoint: '/movie/popular', name: 'Populares' },
         { id: 'now-playing', name: 'Nos Cinemas' },
         { endpoint: '/movie/upcoming', name: 'Em Breve' },
     ];
@@ -185,7 +185,7 @@ async function collectMoviesHighlights(): Promise<HighlightItem[]> {
 
             if ('id' in source) {
                 // Fetch from Firebase
-                const docRef = doc(db, 'public', source.id);
+                const docRef = doc(db, 'public', source.id as string);
                 const docSnap = await getDoc(docRef);
 
                 if (docSnap.exists()) {
@@ -259,8 +259,8 @@ async function collectTvHighlights(): Promise<HighlightItem[]> {
 
     const sources = [
         { id: 'global-series', name: 'Top 10 Global' },
+        { id: 'popular-tv', name: 'Populares' },
         { endpoint: '/tv/top_rated', name: 'Mais Bem Avaliadas' },
-        { endpoint: '/tv/popular', name: 'Populares' },
         { endpoint: '/tv/on_the_air', name: 'No Ar' },
     ];
 
@@ -270,7 +270,7 @@ async function collectTvHighlights(): Promise<HighlightItem[]> {
 
             if ('id' in source) {
                 // Fetch from Firebase
-                const docRef = doc(db, 'public', source.id);
+                const docRef = doc(db, 'public', source.id as string);
                 const docSnap = await getDoc(docRef);
 
                 if (docSnap.exists()) {

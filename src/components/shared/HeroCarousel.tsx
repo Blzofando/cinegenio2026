@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { HighlightItem } from '@/lib/services/highlightService';
 import VideoPlayerModal from './VideoPlayerModal';
 import CombinedPlayButton from './CombinedPlayButton';
+import { useWatchStatus } from '@/hooks/useWatchStatus';
 
 interface HeroCarouselProps {
     items: HighlightItem[];
@@ -18,6 +19,9 @@ const HeroCarousel: React.FC<HeroCarouselProps> = ({ items }) => {
     const [showPlayer, setShowPlayer] = useState(false);
 
     const currentItem = items[currentIndex];
+
+    // Get watch status for current item
+    const watchStatus = useWatchStatus(currentItem?.id || 0, currentItem?.tmdbMediaType || 'movie');
 
     // Auto-play logic
     useEffect(() => {
@@ -142,7 +146,7 @@ const HeroCarousel: React.FC<HeroCarouselProps> = ({ items }) => {
                                     title: currentItem.title,
                                     posterUrl: currentItem.backdropUrl || '',
                                 }}
-                                watchStatus="new"
+                                watchStatus={watchStatus}
                                 onPlay={() => setShowPlayer(true)}
                             />
 

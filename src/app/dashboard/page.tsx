@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { collection, onSnapshot } from 'firebase/firestore';
+import React, { useState, useEffect } from 'react';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { RadarItem } from '@/types';
 import TopTenCarousel from '@/components/shared/TopTenCarousel';
@@ -10,46 +10,51 @@ import DashboardHeader from '@/components/shared/DashboardHeader';
 import ContinueWatchingCarousel from '@/components/shared/ContinueWatchingCarousel';
 import HeroCarousel from '@/components/shared/HeroCarousel';
 import { getHighlights, HighlightItem } from '@/lib/services/highlightService';
+import HeroSkeleton from '@/components/shared/skeletons/HeroSkeleton';
 
 export default function DashboardHome() {
-    const [tmdbCache, setTmdbCache] = useState<RadarItem[]>([]);
-    const [hasTriggeredPopulate, setHasTriggeredPopulate] = useState(false);
+    const [trending, setTrending] = useState<RadarItem[]>([]);
+    const [nowPlaying, setNowPlaying] = useState<RadarItem[]>([]);
     const [highlights, setHighlights] = useState<HighlightItem[]>([]);
+    const [hasTriggeredPopulate, setHasTriggeredPopulate] = useState(false);
 
     useEffect(() => {
-        // Trigger populate if needed (idempotent on server)
-        fetch('/api/populate-radar', { method: 'POST' }).catch(console.error);
-
-        const unsubscribe = onSnapshot(collection(db, 'radarCache'), (snapshot) => {
-            const items: RadarItem[] = [];
-            snapshot.forEach((doc) => {
-                items.push(doc.data() as RadarItem);
-            });
-            setTmdbCache(items);
-
-            if (items.length === 0 && !hasTriggeredPopulate) {
-                console.log("Cache vazio. Disparando população...");
-                setHasTriggeredPopulate(true);
-                fetch('/api/populate-radar', { method: 'POST' })
-                    .then(res => res.json())
-                    .then(data => console.log('Populate result:', data))
-                    .catch(err => console.error('Populate error:', err));
+        // Listen to public/trending
+        const unsubTrending = onSnapshot(doc(db, 'public', 'trending'), (docSnap) => {
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                setTrending((data.items || []).slice(0, 20));
+            } else {
+                console.warn('[Dashboard] Document public/trending does not exist');
+                setTrending([]);
+                // Trigger populate if not already triggered
+                if (!hasTriggeredPopulate) {
+                    console.log('[Dashboard] Triggering populate-radar...');
+                    setHasTriggeredPopulate(true);
+                    fetch('/api/populate-radar', { method: 'POST' })
+                        .then(res => res.json())
+                        .then(data => console.log('[Dashboard] Populate result:', data))
+                        .catch(err => console.error('[Dashboard] Populate error:', err));
+                }
             }
         });
 
-        return () => unsubscribe();
+        // Listen to public/now-playing
+        const unsubNowPlaying = onSnapshot(doc(db, 'public', 'now-playing'), (docSnap) => {
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                setNowPlaying((data.items || []).slice(0, 20));
+            } else {
+                console.warn('[Dashboard] Document public/now-playing does not exist');
+                setNowPlaying([]);
+            }
+        });
+
+        return () => {
+            unsubTrending();
+            unsubNowPlaying();
+        };
     }, [hasTriggeredPopulate]);
-
-    // Carousels baseados em radarCache (trending e now playing)
-    const trending = useMemo(() =>
-        tmdbCache.filter(r => r.listType === 'trending').slice(0, 20),
-        [tmdbCache]
-    );
-
-    const nowPlaying = useMemo(() =>
-        tmdbCache.filter(r => r.listType === 'now_playing').slice(0, 20),
-        [tmdbCache]
-    );
 
     // Load highlights for hero carousel
     useEffect(() => {
@@ -65,8 +70,10 @@ export default function DashboardHome() {
             <DashboardHeader />
 
             {/* Hero Carousel */}
-            {highlights.length > 0 && (
+            {highlights.length > 0 ? (
                 <HeroCarousel items={highlights} />
+            ) : (
+                <HeroSkeleton />
             )}
 
             {/* Main Content */}
@@ -137,13 +144,6 @@ export default function DashboardHome() {
                     </section>
                 )}
 
-                {/* Loading State when empty */}
-                {tmdbCache.length === 0 && (
-                    <div className="flex flex-col items-center justify-center h-96">
-                        <div className="w-16 h-16 border-t-4 border-purple-500 border-solid rounded-full animate-spin mb-4"></div>
-                        <p className="text-gray-400">Populando radar...</p>
-                    </div>
-                )}
             </div>
         </div>
     );

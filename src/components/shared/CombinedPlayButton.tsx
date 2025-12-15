@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Play, RotateCcw, MoreVertical, Eye, EyeOff, Check, List, Plus } from 'lucide-react';
+import { Play, RotateCcw, MoreVertical, Eye, EyeOff, Check, List, Plus, XCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { markAsWatching, restartItem } from '@/lib/watchedService';
+import { markAsDropped } from '@/lib/droppedService';
 import { db } from '@/lib/firebase/client';
 import { doc, getDoc, deleteDoc } from 'firebase/firestore';
 import RatingModal from './RatingModal';
@@ -17,7 +18,7 @@ interface CombinedPlayButtonProps {
         title: string;
         posterUrl: string;
     };
-    watchStatus: 'new' | 'resume' | 'rewatch';
+    watchStatus: 'new' | 'resume' | 'rewatch' | 'dropped';
     onPlay: () => void;
     onWatchlistToggle?: () => void;
     isInWatchlist?: boolean;
@@ -79,18 +80,17 @@ const CombinedPlayButton: React.FC<CombinedPlayButtonProps> = ({
         if (!user) return;
 
         try {
-            if (isWatching) {
-                // Unwatching - remove from nowWatching
-                const docRef = doc(db, 'users', user.uid, 'nowWatching', String(item.id));
-                await deleteDoc(docRef);
-                setIsWatching(false);
-                console.log('✅ Removido de assistindo');
-            } else {
-                // Mark as watching
-                await markAsWatching(user.uid, item);
-                setIsWatching(true);
-                console.log('✅ Marcado como assistindo');
+            // Se estiver em dropped, remover primeiro
+            if (watchStatus === 'dropped') {
+                const droppedRef = doc(db, 'users', user.uid, 'dropped', `${item.mediaType}_${item.id}`);
+                await deleteDoc(droppedRef);
+                console.log('✅ Removido de abandonados');
             }
+
+            // Marcar como assistindo
+            await markAsWatching(user.uid, item);
+            console.log('✅ Marcado como assistindo');
+
             setIsOpen(false);
             onStatusChange?.();
         } catch (error) {
@@ -99,7 +99,18 @@ const CombinedPlayButton: React.FC<CombinedPlayButtonProps> = ({
         }
     };
 
-    const handleWatched = () => {
+    const handleWatched = async () => {
+        // Se estiver em dropped, remover primeiro
+        if (user && watchStatus === 'dropped') {
+            try {
+                const droppedRef = doc(db, 'users', user.uid, 'dropped', `${item.mediaType}_${item.id}`);
+                await deleteDoc(droppedRef);
+                console.log('✅ Removido de abandonados antes de marcar como watched');
+            } catch (error) {
+                console.error('Erro ao remover de dropped:', error);
+            }
+        }
+
         setIsOpen(false);
         setShowRatingModal(true);
     };
@@ -118,6 +129,23 @@ const CombinedPlayButton: React.FC<CombinedPlayButtonProps> = ({
         } catch (error) {
             console.error('Erro:', error);
             alert('Erro ao reiniciar');
+        }
+    };
+
+    const handleDropped = async () => {
+        if (!user) return;
+
+        const confirm = window.confirm(`Abandonar "${item.title}"? O título será movido para Abandonados.`);
+        if (!confirm) return;
+
+        try {
+            await markAsDropped(user.uid, item);
+            console.log('✅ Item marcado como abandonado');
+            setIsOpen(false);
+            onStatusChange?.();
+        } catch (error) {
+            console.error('Erro:', error);
+            alert('Erro ao marcar como abandonado');
         }
     };
 
@@ -162,15 +190,22 @@ const CombinedPlayButton: React.FC<CombinedPlayButtonProps> = ({
                 <div className="flex items-stretch rounded-lg overflow-hidden shadow-lg">
                     {/* Main Play Button */}
                     <button
-                        onClick={onPlay}
-                        className={`flex items-center gap-2 px-8 py-3 font-bold text-white transition-all ${watchStatus === 'rewatch'
-                            ? 'bg-purple-600 hover:bg-purple-700'
-                            : watchStatus === 'resume'
-                                ? 'bg-green-600 hover:bg-green-700'
-                                : 'bg-red-600 hover:bg-red-700'
+                        onClick={watchStatus === 'dropped' ? () => setIsOpen(!isOpen) : onPlay}
+                        className={`flex items-center gap-2 px-8 py-3 font-bold text-white transition-all ${watchStatus === 'dropped'
+                            ? 'bg-orange-600 hover:bg-orange-700'
+                            : watchStatus === 'rewatch'
+                                ? 'bg-purple-600 hover:bg-purple-700'
+                                : watchStatus === 'resume'
+                                    ? 'bg-green-600 hover:bg-green-700'
+                                    : 'bg-red-600 hover:bg-red-700'
                             }`}
                     >
-                        {watchStatus === 'rewatch' ? (
+                        {watchStatus === 'dropped' ? (
+                            <>
+                                <XCircle className="w-5 h-5" />
+                                Abandonado
+                            </>
+                        ) : watchStatus === 'rewatch' ? (
                             <>
                                 <RotateCcw className="w-5 h-5" />
                                 Rewatch
@@ -211,11 +246,13 @@ const CombinedPlayButton: React.FC<CombinedPlayButtonProps> = ({
 
                             setIsOpen(!isOpen);
                         }}
-                        className={`flex items-center px-3 border-l-2 border-black/20 transition-all ${watchStatus === 'rewatch'
-                            ? 'bg-purple-600 hover:bg-purple-700'
-                            : watchStatus === 'resume'
-                                ? 'bg-green-600 hover:bg-green-700'
-                                : 'bg-red-600 hover:bg-red-700'
+                        className={`flex items-center px-3 border-l-2 border-black/20 transition-all ${watchStatus === 'dropped'
+                            ? 'bg-orange-600 hover:bg-orange-700'
+                            : watchStatus === 'rewatch'
+                                ? 'bg-purple-600 hover:bg-purple-700'
+                                : watchStatus === 'resume'
+                                    ? 'bg-green-600 hover:bg-green-700'
+                                    : 'bg-red-600 hover:bg-red-700'
                             }`}
                     >
                         <MoreVertical className="w-5 h-5 text-white" />
@@ -225,32 +262,22 @@ const CombinedPlayButton: React.FC<CombinedPlayButtonProps> = ({
                 {/* Dropdown Menu */}
                 {isOpen && (
                     <div className={`absolute left-0 w-64 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl overflow-hidden z-50 animate-in fade-in duration-200 ${dropdownPosition === 'above' ? 'bottom-full mb-2' : 'top-full mt-2'}`}>
-                        {/* Watching/Unwatching */}
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                handleWatching();
-                            }}
-                            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-800 transition-colors text-left"
-                        >
-                            {isWatching ? (
-                                <>
-                                    <EyeOff className="w-5 h-5 text-gray-400" />
-                                    <div>
-                                        <div className="font-semibold text-white">Unwatching</div>
-                                        <div className="text-xs text-gray-400">Remover de assistindo</div>
-                                    </div>
-                                </>
-                            ) : (
-                                <>
-                                    <Eye className="w-5 h-5 text-blue-400" />
-                                    <div>
-                                        <div className="font-semibold text-white">Assistindo</div>
-                                        <div className="text-xs text-gray-400">Controle manual (0min)</div>
-                                    </div>
-                                </>
-                            )}
-                        </button>
+                        {/* Watching/Unwatching - só mostrar se NEW */}
+                        {watchStatus === 'new' && (
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleWatching();
+                                }}
+                                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-800 transition-colors text-left"
+                            >
+                                <Eye className="w-5 h-5 text-blue-400" />
+                                <div>
+                                    <div className="font-semibold text-white">Assistindo</div>
+                                    <div className="text-xs text-gray-400">Controle manual (0min)</div>
+                                </div>
+                            </button>
+                        )}
 
                         {/* Watchlist */}
                         {onWatchlistToggle && (
@@ -311,6 +338,23 @@ const CombinedPlayButton: React.FC<CombinedPlayButtonProps> = ({
                                 <div className="text-xs text-gray-400">Resetar progresso</div>
                             </div>
                         </button>
+
+                        {/* Abandonar - só mostrar se RESUME ou REWATCH (não mostrar em NEW ou DROPPED) */}
+                        {(watchStatus === 'resume' || watchStatus === 'rewatch') && (
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDropped();
+                                }}
+                                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-800 transition-colors text-left border-t border-gray-800"
+                            >
+                                <XCircle className="w-5 h-5 text-red-400" />
+                                <div>
+                                    <div className="font-semibold text-white">Abandonar</div>
+                                    <div className="text-xs text-gray-400">Parei de assistir</div>
+                                </div>
+                            </button>
+                        )}
 
                         {/* Select Episode (TV only) */}
                         {item.mediaType === 'tv' && (

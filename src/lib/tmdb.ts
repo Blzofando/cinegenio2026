@@ -267,3 +267,40 @@ export const getTopRatedTV = (page: number = 1) => {
 export const getPopularTV = (page: number = 1) => {
     return addToQueue(() => internalGetPopularTV(page));
 };
+
+// Funções com paginação para now-playing, upcoming e on-the-air
+const internalGetNowPlayingMoviesPaginated = async (page: number = 1): Promise<{ results: TMDbSearchResult[], total_pages: number }> => {
+    const url = `${BASE_URL}/movie/now_playing?language=pt-BR&page=${page}&region=BR&api_key=${API_KEY}`;
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Falha ao buscar filmes nos cinemas: ${response.status}`);
+    const data = await response.json();
+    return { results: data.results || [], total_pages: data.total_pages || 0 };
+};
+
+const internalGetUpcomingMoviesPaginated = async (page: number = 1): Promise<{ results: TMDbSearchResult[], total_pages: number }> => {
+    const url = `${BASE_URL}/movie/upcoming?language=pt-BR&page=${page}&region=BR&api_key=${API_KEY}`;
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`A busca de próximos lançamentos de filmes falhou: ${response.status}`);
+    const data = await response.json();
+    return { results: data.results || [], total_pages: data.total_pages || 0 };
+};
+
+const internalGetOnTheAirTVPaginated = async (page: number = 1): Promise<{ results: TMDbSearchResult[], total_pages: number }> => {
+    const url = `${BASE_URL}/tv/on_the_air?language=pt-BR&page=${page}&api_key=${API_KEY}`;
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`A busca de séries no ar falhou: ${response.status}`);
+    const data = await response.json();
+    return { results: data.results || [], total_pages: data.total_pages || 0 };
+};
+
+export const getNowPlayingMoviesPaginated = (page: number = 1) => {
+    return addToQueue(() => internalGetNowPlayingMoviesPaginated(page));
+};
+
+export const getUpcomingMoviesPaginated = (page: number = 1) => {
+    return addToQueue(() => internalGetUpcomingMoviesPaginated(page));
+};
+
+export const getOnTheAirTVPaginated = (page: number = 1) => {
+    return addToQueue(() => internalGetOnTheAirTVPaginated(page));
+};

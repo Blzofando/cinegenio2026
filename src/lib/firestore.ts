@@ -1,7 +1,7 @@
 // src/lib/firestore.ts
 
 import { db } from '@/lib/firebase/client';
-import { collection, doc, getDocs, setDoc, deleteDoc, updateDoc, writeBatch } from "firebase/firestore";
+import { collection, doc, getDocs, getDoc, setDoc, deleteDoc, updateDoc, writeBatch } from "firebase/firestore";
 import { ManagedWatchedItem, WatchlistItem, Challenge, RelevantRadarItem, TMDbRadarItem } from '@/types';
 
 // --- COLEÇÃO PRINCIPAL (ASSISTIDOS) ---
@@ -76,6 +76,19 @@ export const setTMDbRadarCache = async (releases: TMDbRadarItem[]): Promise<void
         batch.set(newDocRef, release);
     });
     await batch.commit();
+};
+
+// Função para ler da coleção public (cache com 1 hora de duração)
+export const getPublicCachedItems = async (cacheType: 'trending' | 'now-playing' | 'upcoming' | 'on-the-air'): Promise<TMDbRadarItem[]> => {
+    const docRef = doc(db, 'public', cacheType);
+    const docSnap = await getDoc(docRef);
+
+    if (!docSnap.exists()) {
+        return [];
+    }
+
+    const data = docSnap.data();
+    return data.items || [];
 };
 
 // Funções para a lista relevante (PÚBLICA)

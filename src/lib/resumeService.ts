@@ -73,12 +73,12 @@ export const getContinueWatchingItems = async (userId: string): Promise<ResumeDa
             // ========== MOVIES ==========
             if (seriesData.mediaType === 'movie') {
                 let progress = 0;
-                if (seriesData.timestamp && seriesData.duration && seriesData.duration > 0) {
+                if (seriesData.timestamp !== undefined && seriesData.duration && seriesData.duration > 0) {
                     progress = (seriesData.timestamp / seriesData.duration) * 100;
                 }
 
-                // Show if has timestamp and not finished (< 95%)
-                if (seriesData.timestamp && seriesData.timestamp > 0 && progress < 95) {
+                // Show if it exists in nowWatching (even if 0 progress) and not finished (< 95%)
+                if (seriesData.timestamp !== undefined && progress < 95) {
                     items.push({
                         id: seriesData.id,
                         mediaType: seriesData.mediaType,

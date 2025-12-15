@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { collection, onSnapshot } from 'firebase/firestore';
+import React, { useState, useEffect } from 'react';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { RadarItem } from '@/types';
 import TopTenCarousel from '@/components/shared/TopTenCarousel';
@@ -10,29 +10,49 @@ import ContinueWatchingCarousel from '@/components/shared/ContinueWatchingCarous
 import DashboardHeader from '@/components/shared/DashboardHeader';
 import HeroCarousel from '@/components/shared/HeroCarousel';
 import { getHighlights, HighlightItem } from '@/lib/services/highlightService';
+import HeroSkeleton from '@/components/shared/skeletons/HeroSkeleton';
 
 export default function TVPage() {
-    const [tmdbCache, setTmdbCache] = useState<RadarItem[]>([]);
+    const [onTheAirTV, setOnTheAirTV] = useState<RadarItem[]>([]);
+    const [topRatedTV, setTopRatedTV] = useState<RadarItem[]>([]);
+    const [popularTV, setPopularTV] = useState<RadarItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [highlights, setHighlights] = useState<HighlightItem[]>([]);
+    const [hasTriggeredPopulate, setHasTriggeredPopulate] = useState(false);
 
     useEffect(() => {
-        // Trigger populate check
-        fetch('/api/populate-radar', { method: 'POST' }).catch(console.error);
-
-        const unsubTMDb = onSnapshot(
-            collection(db, 'radarCache'),
-            (snapshot) => {
-                const items: RadarItem[] = [];
-                snapshot.forEach(doc => items.push(doc.data() as RadarItem));
-                setTmdbCache(items);
-                setIsLoading(false);
-            },
-            (err) => {
-                console.error("Erro ao carregar radar:", err);
-                setIsLoading(false);
+        // Listen to public/on-the-air
+        const unsubOnTheAir = onSnapshot(doc(db, 'public', 'on-the-air'), (docSnap) => {
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                const allItems = data.items || [];
+                setOnTheAirTV(allItems.filter((r: RadarItem) => r.tmdbMediaType === 'tv').slice(0, 20));
+            } else {
+                console.warn('[TV Page] Document public/on-the-air does not exist');
+                setOnTheAirTV([]);
+                if (!hasTriggeredPopulate) {
+                    console.log('[TV Page] Triggering populate-radar...');
+                    setHasTriggeredPopulate(true);
+                    fetch('/api/populate-radar', { method: 'POST' })
+                        .then(res => res.json())
+                        .then(data => console.log('[TV Page] Populate result:', data))
+                        .catch(err => console.error('[TV Page] Populate error:', err));
+                }
             }
-        );
+            setIsLoading(false);
+        });
+
+        // Listen to public/popular-tv
+        const unsubPopular = onSnapshot(doc(db, 'public', 'popular-tv'), (docSnap) => {
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                const allItems = data.items || [];
+                setPopularTV(allItems.filter((r: RadarItem) => r.tmdbMediaType === 'tv').slice(0, 20));
+            } else {
+                console.warn('[TV Page] Document public/popular-tv does not exist');
+                setPopularTV([]);
+            }
+        });
 
         // Load highlights
         const loadHighlights = async () => {
@@ -41,34 +61,21 @@ export default function TVPage() {
         };
         loadHighlights();
 
-        return () => unsubTMDb();
-    }, []);
-
-    // No longer needed - using FlixPatrol API directly in component
-
-    // Categorias (apenas séries)
-    const topRatedTV = useMemo(() =>
-        tmdbCache.filter(r => r.listType === 'top_rated' && r.tmdbMediaType === 'tv').slice(0, 20),
-        [tmdbCache]
-    );
-
-    const popularTV = useMemo(() =>
-        tmdbCache.filter(r => r.listType === 'popular' && r.tmdbMediaType === 'tv').slice(0, 20),
-        [tmdbCache]
-    );
-
-    const onTheAirTV = useMemo(() =>
-        tmdbCache.filter(r => r.listType === 'on_the_air' && r.tmdbMediaType === 'tv').slice(0, 20),
-        [tmdbCache]
-    );
+        return () => {
+            unsubOnTheAir();
+            unsubPopular();
+        };
+    }, [hasTriggeredPopulate]);
 
     return (
         <div className="min-h-screen bg-gradient-to-b from-black via-gray-900 to-black text-white">
             <DashboardHeader />
 
             {/* Hero Carousel */}
-            {highlights.length > 0 && (
+            {highlights.length > 0 ? (
                 <HeroCarousel items={highlights} />
+            ) : (
+                <HeroSkeleton />
             )}
 
             {/* Main Content */}

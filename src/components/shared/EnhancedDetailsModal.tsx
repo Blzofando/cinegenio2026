@@ -10,7 +10,8 @@ import { WatchedDataContext } from '@/contexts/WatchedDataContext';
 import VideoPlayerModal from './VideoPlayerModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/lib/firebase/client';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
+import { useWatchStatus } from '@/hooks/useWatchStatus';
 import StatusButton from './StatusButton';
 import CombinedPlayButton from './CombinedPlayButton';
 import { filterStartedSeasons } from '@/lib/services/seriesMetadataCache';
@@ -37,7 +38,10 @@ const EnhancedDetailsModal: React.FC<EnhancedDetailsModalProps> = ({ item, onClo
     const { data: watchedData } = useContext(WatchedDataContext);
     const [isInWatchlist, setIsInWatchlist] = useState(false);
     const [isWatched, setIsWatched] = useState(false);
-    const [watchStatus, setWatchStatus] = useState<'new' | 'resume' | 'rewatch'>('new');
+
+    // Use the hook for realtime status
+    const watchStatus = useWatchStatus(item.id, item.tmdbMediaType);
+
     const [details, setDetails] = useState<TMDbDetails | null>(null);
     const [loading, setLoading] = useState(true);
     const [showPlayer, setShowPlayer] = useState(false);
@@ -55,6 +59,7 @@ const EnhancedDetailsModal: React.FC<EnhancedDetailsModalProps> = ({ item, onClo
     // Fetch TMDb details when modal opens
     useEffect(() => {
         const fetchDetails = async () => {
+            // ... existing fetchDetails logic ...
             try {
                 const type = item.tmdbMediaType === 'movie' ? 'movie' : 'tv';
                 const response = await fetch(`https://api.themoviedb.org/3/${type}/${item.id}?api_key=${process.env.NEXT_PUBLIC_TMDB_API_KEY}&language=pt-BR`);
@@ -74,58 +79,11 @@ const EnhancedDetailsModal: React.FC<EnhancedDetailsModalProps> = ({ item, onClo
                 setLoading(false);
             }
         };
-
         fetchDetails();
     }, [item.id, item.tmdbMediaType]);
 
-    // Check watch progress from nowWatching
-    useEffect(() => {
-        const checkWatchStatus = async () => {
-            if (!user) {
-                setWatchStatus(isWatched ? 'rewatch' : 'new');
-                return;
-            }
+    // Removed manual checkWatchStatus effect since we use the hook
 
-            try {
-                const nowWatchingRef = collection(db, 'users', user.uid, 'nowWatching');
-                const snapshot = await getDocs(nowWatchingRef);
-
-                const docId = item.tmdbMediaType === 'movie'
-                    ? `movie_${item.id}`
-                    : `tv_${item.id}`;
-
-                const matchingDoc = snapshot.docs.find(doc => doc.id === docId);
-
-                if (matchingDoc) {
-                    const data = matchingDoc.data();
-                    let progress = 0;
-
-                    if (item.tmdbMediaType === 'movie' && data.timestamp && data.duration) {
-                        progress = (data.timestamp / data.duration) * 100;
-
-                        if (progress >= 95) {
-                            setWatchStatus('rewatch');
-                        } else if (progress > 0) {
-                            setWatchStatus('resume');
-                        } else {
-                            setWatchStatus('new');
-                        }
-                    } else if (item.tmdbMediaType === 'tv') {
-                        // For series, if it exists in nowWatching, user has started watching
-                        // Show "Resume" regardless of episode progress
-                        setWatchStatus('resume');
-                    }
-                } else {
-                    setWatchStatus(isWatched ? 'rewatch' : 'new');
-                }
-            } catch (error) {
-                console.error('[Modal] Error checking watch status:', error);
-                setWatchStatus(isWatched ? 'rewatch' : 'new');
-            }
-        };
-
-        checkWatchStatus();
-    }, [user, item, isWatched]);
 
     const handleWatchlistToggle = async () => {
         if (isInWatchlist) {

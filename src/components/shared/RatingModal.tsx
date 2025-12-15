@@ -29,12 +29,39 @@ const RatingModal: React.FC<RatingModalProps> = ({ item, onClose, onSuccess }) =
     const [comment, setComment] = useState('');
     const [isSaving, setIsSaving] = useState(false);
 
+    // TV Logic
+    const [scope, setScope] = useState<'series' | 'season'>('series');
+    const [selectedSeason, setSelectedSeason] = useState<number | null>(null);
+    const [seasons, setSeasons] = useState<any[]>([]);
+
+    React.useEffect(() => {
+        if (item.mediaType === 'tv') {
+            fetch(`https://api.themoviedb.org/3/tv/${item.id}?api_key=${process.env.NEXT_PUBLIC_TMDB_API_KEY}&language=pt-BR`)
+                .then(res => res.json())
+                .then(data => {
+                    // Filter out Season 0 (Specials) if preferred, or keep it
+                    setSeasons(data.seasons || []);
+                });
+        }
+    }, [item.id, item.mediaType]);
+
     const handleSave = async () => {
         if (!user || !selectedRating) return;
+        if (scope === 'season' && selectedSeason === null) {
+            alert('Selecione uma temporada!');
+            return;
+        }
 
         setIsSaving(true);
         try {
-            await markAsWatched(user.uid, item, selectedRating, comment);
+            await markAsWatched(
+                user.uid,
+                item,
+                selectedRating,
+                comment,
+                scope,
+                selectedSeason || undefined // Pass season only if scope is season
+            );
 
             console.log('✅ Avaliação salva com sucesso!');
 
@@ -59,12 +86,12 @@ const RatingModal: React.FC<RatingModalProps> = ({ item, onClose, onSuccess }) =
             />
 
             {/* Modal */}
-            <div className="relative w-full max-w-md bg-gradient-to-br from-gray-900 via-gray-900 to-black border border-gray-700/50 rounded-2xl shadow-2xl animate-in zoom-in-95 duration-300 overflow-hidden">
+            <div className="relative w-full max-w-md bg-gradient-to-br from-gray-900 via-gray-900 to-black border border-gray-700/50 rounded-2xl shadow-2xl animate-in zoom-in-95 duration-300 overflow-hidden flex flex-col max-h-[90vh]">
                 {/* Decorative gradient top bar */}
                 <div className={`h-1 bg-gradient-to-r ${selectedRatingData?.gradient || 'from-purple-500 to-pink-500'} transition-all duration-500`} />
 
                 {/* Header */}
-                <div className="relative p-6 pb-4">
+                <div className="relative p-6 pb-4 shrink-0">
                     <button
                         onClick={onClose}
                         className="absolute top-4 right-4 p-2 hover:bg-white/10 rounded-lg transition-colors group"
@@ -82,45 +109,81 @@ const RatingModal: React.FC<RatingModalProps> = ({ item, onClose, onSuccess }) =
                     </div>
                 </div>
 
-                {/* Rating Options - Compact */}
-                <div className="px-6 pb-6">
-                    <div className="flex justify-between gap-2 mb-6">
-                        {RATINGS.map((rating) => {
-                            const isSelected = selectedRating === rating.type;
+                <div className="overflow-y-auto px-6 pb-6 space-y-6 custom-scrollbar">
 
-                            return (
+                    {/* TV: Scope Selector */}
+                    {item.mediaType === 'tv' && (
+                        <div className="space-y-3">
+                            <label className="text-sm font-semibold text-gray-300">O que você está avaliando?</label>
+
+                            {/* Scope Tabs */}
+                            <div className="flex bg-gray-800/50 p-1 rounded-xl">
                                 <button
-                                    key={rating.type}
-                                    onClick={() => setSelectedRating(rating.type)}
-                                    className={`relative flex-1 aspect-square rounded-xl border-2 transition-all duration-300 transform hover:scale-110 ${isSelected
-                                            ? `border-transparent bg-gradient-to-br ${rating.gradient} shadow-lg scale-110`
-                                            : 'border-gray-700 bg-gray-800/50 hover:border-gray-600 hover:bg-gray-800'
+                                    onClick={() => setScope('series')}
+                                    className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${scope === 'series' ? 'bg-purple-600 text-white shadow-lg' : 'text-gray-400 hover:text-white'
                                         }`}
                                 >
-                                    {/* Glow effect when selected */}
-                                    {isSelected && (
-                                        <div className={`absolute -inset-1 bg-gradient-to-br ${rating.gradient} opacity-50 blur-lg rounded-xl -z-10`} />
-                                    )}
-
-                                    <div className="relative flex flex-col items-center justify-center h-full gap-1">
-                                        <span className="text-3xl">{rating.emoji}</span>
-                                        <span className={`font-bold text-xs ${isSelected ? 'text-white' : 'text-gray-400'
-                                            }`}>
-                                            {rating.label}
-                                        </span>
-                                    </div>
-
-                                    {/* Selected checkmark */}
-                                    {isSelected && (
-                                        <div className="absolute -top-1 -right-1 w-5 h-5 bg-white rounded-full flex items-center justify-center shadow-lg">
-                                            <svg className="w-3 h-3 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M5 13l4 4L19 7" />
-                                            </svg>
-                                        </div>
-                                    )}
+                                    Série Completa
                                 </button>
-                            );
-                        })}
+                                <button
+                                    onClick={() => setScope('season')}
+                                    className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${scope === 'season' ? 'bg-purple-600 text-white shadow-lg' : 'text-gray-400 hover:text-white'
+                                        }`}
+                                >
+                                    Temporada
+                                </button>
+                            </div>
+
+                            {/* Season Grid (Only if 'season' is selected) */}
+                            {scope === 'season' && (
+                                <div className="grid grid-cols-4 gap-2 animate-in fade-in slide-in-from-top-2">
+                                    {seasons.map((season) => (
+                                        <button
+                                            key={season.id}
+                                            onClick={() => setSelectedSeason(season.season_number)}
+                                            className={`p-2 rounded-lg border text-sm font-medium transition-all ${selectedSeason === season.season_number
+                                                    ? 'bg-purple-500/20 border-purple-500 text-white'
+                                                    : 'bg-gray-800/50 border-transparent text-gray-400 hover:border-gray-600'
+                                                }`}
+                                        >
+                                            {season.season_number === 0 ? 'Esp.' : `T${season.season_number}`}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Rating Options */}
+                    <div>
+                        <div className="flex justify-between gap-2">
+                            {RATINGS.map((rating) => {
+                                const isSelected = selectedRating === rating.type;
+
+                                return (
+                                    <button
+                                        key={rating.type}
+                                        onClick={() => setSelectedRating(rating.type)}
+                                        className={`relative flex-1 aspect-square rounded-xl border-2 transition-all duration-300 transform hover:scale-110 ${isSelected
+                                            ? `border-transparent bg-gradient-to-br ${rating.gradient} shadow-lg scale-110`
+                                            : 'border-gray-700 bg-gray-800/50 hover:border-gray-600 hover:bg-gray-800'
+                                            }`}
+                                    >
+                                        {/* Glow effect */}
+                                        {isSelected && (
+                                            <div className={`absolute -inset-1 bg-gradient-to-br ${rating.gradient} opacity-50 blur-lg rounded-xl -z-10`} />
+                                        )}
+
+                                        <div className="relative flex flex-col items-center justify-center h-full gap-1">
+                                            <span className="text-3xl">{rating.emoji}</span>
+                                            <span className={`font-bold text-xs ${isSelected ? 'text-white' : 'text-gray-400'}`}>
+                                                {rating.label}
+                                            </span>
+                                        </div>
+                                    </button>
+                                );
+                            })}
+                        </div>
                     </div>
 
                     {/* Comment Field */}
@@ -147,7 +210,7 @@ const RatingModal: React.FC<RatingModalProps> = ({ item, onClose, onSuccess }) =
                 </div>
 
                 {/* Footer */}
-                <div className="px-6 pb-6 flex gap-3">
+                <div className="px-6 pb-6 flex gap-3 shrink-0">
                     <button
                         onClick={onClose}
                         disabled={isSaving}
@@ -159,8 +222,8 @@ const RatingModal: React.FC<RatingModalProps> = ({ item, onClose, onSuccess }) =
                         onClick={handleSave}
                         disabled={!selectedRating || isSaving}
                         className={`flex-1 px-6 py-3 rounded-xl font-bold text-white text-sm shadow-lg transition-all transform hover:scale-105 disabled:scale-100 disabled:cursor-not-allowed ${selectedRating && selectedRatingData
-                                ? `bg-gradient-to-r ${selectedRatingData.hoverGradient}`
-                                : 'bg-gray-700'
+                            ? `bg-gradient-to-r ${selectedRatingData.hoverGradient}`
+                            : 'bg-gray-700'
                             }`}
                     >
                         {isSaving ? (

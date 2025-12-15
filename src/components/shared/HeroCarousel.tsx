@@ -17,6 +17,8 @@ const HeroCarousel: React.FC<HeroCarouselProps> = ({ items }) => {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [isPlaying, setIsPlaying] = useState(true);
     const [showPlayer, setShowPlayer] = useState(false);
+    const [playingItem, setPlayingItem] = useState<HighlightItem | null>(null);
+    const [isHovered, setIsHovered] = useState(false);
 
     const currentItem = items[currentIndex];
 
@@ -25,14 +27,14 @@ const HeroCarousel: React.FC<HeroCarouselProps> = ({ items }) => {
 
     // Auto-play logic
     useEffect(() => {
-        if (!isPlaying || items.length <= 1) return;
+        if (!isPlaying || items.length <= 1 || showPlayer || isHovered) return;
 
         const interval = setInterval(() => {
             setCurrentIndex((prev) => (prev + 1) % items.length);
         }, 6000); // 6 seconds
 
         return () => clearInterval(interval);
-    }, [isPlaying, items.length, currentIndex]); // Added currentIndex to deps
+    }, [isPlaying, items.length, currentIndex, showPlayer, isHovered]);
 
     const goToPrevious = () => {
         setCurrentIndex((prev) => (prev - 1 + items.length) % items.length);
@@ -46,21 +48,30 @@ const HeroCarousel: React.FC<HeroCarouselProps> = ({ items }) => {
         setCurrentIndex(index);
     };
 
+    const handlePlay = () => {
+        setPlayingItem(currentItem);
+        setShowPlayer(true);
+    };
+
     if (!items || items.length === 0) {
         return null;
     }
 
-    const displayableItem = {
-        id: currentItem.id,
-        tmdbMediaType: currentItem.tmdbMediaType,
-        title: currentItem.title,
-        posterUrl: '', // Not used in modal, but required by interface
-        backdropUrl: currentItem.backdropUrl,
-    };
+    const displayableItem = playingItem ? {
+        id: playingItem.id,
+        tmdbMediaType: playingItem.tmdbMediaType,
+        title: playingItem.title,
+        posterUrl: '',
+        backdropUrl: playingItem.backdropUrl,
+    } : null;
 
     return (
         <>
-            <div className="relative w-full h-[70vh] md:h-[80vh] bg-black overflow-hidden group">
+            <div
+                className="relative w-full h-[70vh] md:h-[80vh] bg-black overflow-hidden group"
+                onMouseEnter={() => setIsHovered(true)}
+                onMouseLeave={() => setIsHovered(false)}
+            >
                 {/* Backdrop Image with Fade Transition */}
                 <div className="absolute inset-0">
                     {items.map((item, index) => (
@@ -147,7 +158,7 @@ const HeroCarousel: React.FC<HeroCarouselProps> = ({ items }) => {
                                     posterUrl: currentItem.backdropUrl || '',
                                 }}
                                 watchStatus={watchStatus}
-                                onPlay={() => setShowPlayer(true)}
+                                onPlay={handlePlay}
                             />
 
                             {/* More Info Button - Navigate to page */}
@@ -195,7 +206,7 @@ const HeroCarousel: React.FC<HeroCarouselProps> = ({ items }) => {
 
             {/* Video Player Modal */}
             {
-                showPlayer && (
+                showPlayer && displayableItem && (
                     <VideoPlayerModal
                         item={displayableItem}
                         onClose={() => setShowPlayer(false)}

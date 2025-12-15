@@ -3,26 +3,44 @@
 import { notFound } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import React, { useState, useEffect } from 'react';
-import { Play, Plus, Star, Calendar, Clock, RotateCcw } from 'lucide-react';
+import React, { useState, useEffect, useContext } from 'react';
+import { Play, Plus, Star, Calendar, Clock, RotateCcw, Check, XCircle, MoreVertical, Eye } from 'lucide-react';
 import { getTMDbDetails, getProviders } from '@/lib/tmdb';
 import DashboardHeader from '@/components/shared/DashboardHeader';
 import VideoPlayerModal from '@/components/shared/VideoPlayerModal';
 import { useWatchStatus } from '@/hooks/useWatchStatus';
-import StatusButton from '@/components/shared/StatusButton';
 import CombinedPlayButton from '@/components/shared/CombinedPlayButton';
 import { WatchlistContext } from '@/contexts/WatchlistContext';
-import { useContext } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { checkWatchedStatus, RatingHistory, RatingType } from '@/lib/watchedService';
 
 interface MoviePageProps {
     params: Promise<{ id: string }>;
 }
 
+const RATING_EMOJIS: Record<RatingType, string> = {
+    amei: '❤️',
+    gostei: '👍',
+    meh: '😐',
+    nao_gostei: '👎'
+};
+
 export default function MoviePage({ params }: MoviePageProps) {
+    const { user } = useAuth();
     const [movieData, setMovieData] = useState<any>(null);
     const [showPlayer, setShowPlayer] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const { isInWatchlist, addToWatchlist, removeFromWatchlist } = useContext(WatchlistContext);
+    const [resolvedId, setResolvedId] = useState<number | null>(null);
+    const [ratingHistory, setRatingHistory] = useState<RatingHistory[]>([]);
+
+    useEffect(() => {
+        const resolveId = async () => {
+            const resolvedParams = await params;
+            setResolvedId(parseInt(resolvedParams.id));
+        };
+        resolveId();
+    }, [params]);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -48,17 +66,17 @@ export default function MoviePage({ params }: MoviePageProps) {
         fetchData();
     }, [params]);
 
-    const [resolvedId, setResolvedId] = React.useState<number | null>(null);
+    const watchStatus = useWatchStatus(resolvedId || 0, 'movie');
 
     useEffect(() => {
-        const resolveId = async () => {
-            const resolvedParams = await params;
-            setResolvedId(parseInt(resolvedParams.id));
-        };
-        resolveId();
-    }, [params]);
-
-    const watchStatus = useWatchStatus(resolvedId || 0, 'movie');
+        if (user && resolvedId) {
+            checkWatchedStatus(user.uid, resolvedId, 'movie').then(data => {
+                if (data?.history) {
+                    setRatingHistory(data.history);
+                }
+            });
+        }
+    }, [user, resolvedId, watchStatus]);
 
     if (isLoading || !movieData) {
         return (
@@ -181,14 +199,14 @@ export default function MoviePage({ params }: MoviePageProps) {
                                             id: movieData.id,
                                             tmdbMediaType: 'movie',
                                             title: title,
-                                            posterUrl: posterUrl,
+                                            posterUrl: posterUrl || undefined,
                                             addedAt: Date.now(),
                                         });
                                     }
                                 }}
                                 isInWatchlist={isInWatchlist(movieData.id)}
                                 onStatusChange={() => {
-                                    console.log('Status changed');
+                                    // Refresh status if needed
                                 }}
                             />
                         </div>
@@ -204,6 +222,51 @@ export default function MoviePage({ params }: MoviePageProps) {
                     <p className="text-gray-300 text-lg leading-relaxed max-w-4xl">
                         {overview}
                     </p>
+
+                    {/* Rating History Bubbles - Stacked Design */}
+                    {ratingHistory.length > 0 && (
+                        <div className="pt-6 border-t border-gray-800 mt-6">
+                            <div className="flex items-center gap-3">
+                                <div className="flex items-center pl-2">
+                                    {ratingHistory.map((h, i) => (
+                                        <div
+                                            key={i}
+                                            className={`relative flex items-center justify-center w-10 h-10 rounded-full border-2 border-black bg-gray-800 shadow-xl transition-transform hover:scale-110 hover:z-10 cursor-help ${i > 0 ? '-ml-4' : ''}`}
+                                            title={`${new Date(h.watchedAt?.seconds * 1000).toLocaleDateString()} - ${h.comment || 'Sem comentário'}`}
+                                        >
+                                            <span className="text-lg">{RATING_EMOJIS[h.rating]}</span>
+                                        </div>
+                                    ))}
+
+                                    {/* Comment Indicator Bubble (if any comment exists in history) */}
+                                    {ratingHistory.some(h => h.comment) && (
+                                        <div className="relative flex items-center justify-center w-10 h-10 rounded-full border-2 border-black bg-white/10 backdrop-blur-md shadow-xl -ml-4 z-20">
+                                            <span className="text-sm">💬</span>
+                                            <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white">
+                                                {ratingHistory.filter(h => h.comment).length}
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="flex flex-col">
+                                    <span className="text-sm font-bold text-white">
+                                        {ratingHistory.length} {ratingHistory.length === 1 ? 'Avaliação' : 'Avaliações'}
+                                    </span>
+                                    <span className="text-xs text-gray-400">
+                                        Seu histórico de watch
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Recent Comment Preview */}
+                            {ratingHistory[ratingHistory.length - 1]?.comment && (
+                                <div className="mt-3 p-3 bg-gray-900/50 rounded-xl border border-gray-800 text-sm italic text-gray-400 max-w-lg">
+                                    "{ratingHistory[ratingHistory.length - 1].comment}"
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </section>
 
                 {/* Where to Watch */}

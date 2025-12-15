@@ -3,15 +3,18 @@ import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/lib/firebase/client';
 import { collection, getDocs, doc, getDoc, onSnapshot } from 'firebase/firestore';
 
-export type WatchStatus = 'new' | 'resume' | 'rewatch' | 'dropped';
+import { checkWatchedStatus } from '@/lib/watchedService';
+
+export type WatchStatus = 'new' | 'resume' | 'rewatch' | 'dropped' | 'watched';
 
 export function useWatchStatus(itemId: number, mediaType: 'movie' | 'tv'): WatchStatus {
     const { user } = useAuth();
     const [watchStatus, setWatchStatus] = useState<WatchStatus>('new');
 
     useEffect(() => {
+        setWatchStatus('new'); // Reset status immediately on ID change
+
         if (!user) {
-            setWatchStatus('new');
             return;
         }
 
@@ -51,7 +54,8 @@ export function useWatchStatus(itemId: number, mediaType: 'movie' | 'tv'): Watch
                     setWatchStatus('new');
                 }
             } else {
-                setWatchStatus('new');
+                // If not watching, check if it was previously watched (we rely on the async check below)
+                // But we don't reset to 'new' immediately here to avoid flickering if 'watched' is being fetched
             }
         };
 
@@ -65,6 +69,13 @@ export function useWatchStatus(itemId: number, mediaType: 'movie' | 'tv'): Watch
         const unsubNowWatching = onSnapshot(nowWatchingRef, (snap) => {
             nowWatchingData = snap.exists() ? snap.data() : null;
             updateStatus();
+        });
+
+        // Check WATCHED status (once on mount)
+        checkWatchedStatus(user.uid, itemId, mediaType).then((result) => {
+            if (result && !isDropped && !nowWatchingData) {
+                setWatchStatus('watched');
+            }
         });
 
         return () => {

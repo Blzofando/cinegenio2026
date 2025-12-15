@@ -18,7 +18,7 @@ interface CombinedPlayButtonProps {
         title: string;
         posterUrl: string;
     };
-    watchStatus: 'new' | 'resume' | 'rewatch' | 'dropped';
+    watchStatus: 'new' | 'resume' | 'rewatch' | 'dropped' | 'watched';
     onPlay: () => void;
     onWatchlistToggle?: () => void;
     isInWatchlist?: boolean;
@@ -190,14 +190,20 @@ const CombinedPlayButton: React.FC<CombinedPlayButtonProps> = ({
                 <div className="flex items-stretch rounded-lg overflow-hidden shadow-lg">
                     {/* Main Play Button */}
                     <button
-                        onClick={watchStatus === 'dropped' ? () => setIsOpen(!isOpen) : onPlay}
+                        onClick={
+                            watchStatus === 'dropped' || watchStatus === 'watched'
+                                ? () => setIsOpen(!isOpen)
+                                : onPlay
+                        }
                         className={`flex items-center gap-2 px-8 py-3 font-bold text-white transition-all ${watchStatus === 'dropped'
                             ? 'bg-orange-600 hover:bg-orange-700'
                             : watchStatus === 'rewatch'
                                 ? 'bg-purple-600 hover:bg-purple-700'
                                 : watchStatus === 'resume'
                                     ? 'bg-green-600 hover:bg-green-700'
-                                    : 'bg-red-600 hover:bg-red-700'
+                                    : watchStatus === 'watched'
+                                        ? 'bg-white/10 hover:bg-white/20 border border-white/20 backdrop-blur-sm shadow-[0_0_15px_rgba(255,255,255,0.1)]'
+                                        : 'bg-red-600 hover:bg-red-700'
                             }`}
                     >
                         {watchStatus === 'dropped' ? (
@@ -215,6 +221,11 @@ const CombinedPlayButton: React.FC<CombinedPlayButtonProps> = ({
                                 <Play className="w-5 h-5 fill-current" />
                                 Resume
                             </>
+                        ) : watchStatus === 'watched' ? (
+                            <>
+                                <Check className="w-5 h-5 fill-current" />
+                                Watched
+                            </>
                         ) : (
                             <>
                                 <Play className="w-5 h-5 fill-current" />
@@ -223,7 +234,7 @@ const CombinedPlayButton: React.FC<CombinedPlayButtonProps> = ({
                         )}
                     </button>
 
-                    {/* Dropdown Toggle - flex items-center for vertical centering */}
+                    {/* Dropdown Toggle */}
                     <button
                         ref={buttonRef}
                         onClick={(e) => {
@@ -234,7 +245,7 @@ const CombinedPlayButton: React.FC<CombinedPlayButtonProps> = ({
                                 const rect = buttonRef.current.getBoundingClientRect();
                                 const spaceBelow = window.innerHeight - rect.bottom;
                                 const spaceAbove = rect.top;
-                                const dropdownHeight = 400; // altura aproximada do menu
+                                const dropdownHeight = 300; // altura estimada
 
                                 // Se não couber embaixo mas couber em cima, renderizar em cima
                                 if (spaceBelow < dropdownHeight && spaceAbove > dropdownHeight) {
@@ -246,13 +257,15 @@ const CombinedPlayButton: React.FC<CombinedPlayButtonProps> = ({
 
                             setIsOpen(!isOpen);
                         }}
-                        className={`flex items-center px-3 border-l-2 border-black/20 transition-all ${watchStatus === 'dropped'
-                            ? 'bg-orange-600 hover:bg-orange-700'
+                        className={`flex items-center px-3 border-l-2 transition-all ${watchStatus === 'dropped'
+                            ? 'bg-orange-600 hover:bg-orange-700 border-black/20'
                             : watchStatus === 'rewatch'
-                                ? 'bg-purple-600 hover:bg-purple-700'
+                                ? 'bg-purple-600 hover:bg-purple-700 border-black/20'
                                 : watchStatus === 'resume'
-                                    ? 'bg-green-600 hover:bg-green-700'
-                                    : 'bg-red-600 hover:bg-red-700'
+                                    ? 'bg-green-600 hover:bg-green-700 border-black/20'
+                                    : watchStatus === 'watched'
+                                        ? 'bg-white/10 hover:bg-white/20 border-white/20 backdrop-blur-md'
+                                        : 'bg-red-600 hover:bg-red-700 border-black/20'
                             }`}
                     >
                         <MoreVertical className="w-5 h-5 text-white" />
@@ -309,7 +322,7 @@ const CombinedPlayButton: React.FC<CombinedPlayButtonProps> = ({
                             </button>
                         )}
 
-                        {/* Watched */}
+                        {/* Watched option */}
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
@@ -317,10 +330,14 @@ const CombinedPlayButton: React.FC<CombinedPlayButtonProps> = ({
                             }}
                             className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-800 transition-colors text-left border-t border-gray-800"
                         >
-                            <Check className="w-5 h-5 text-green-400" />
+                            <Check className={`w-5 h-5 ${watchStatus === 'watched' ? 'text-yellow-400' : 'text-green-400'}`} />
                             <div>
-                                <div className="font-semibold text-white">Watched</div>
-                                <div className="text-xs text-gray-400">Marcar como assistido</div>
+                                <div className="font-semibold text-white">
+                                    {watchStatus === 'watched' ? 'Rate it' : 'Watched'}
+                                </div>
+                                <div className="text-xs text-gray-400">
+                                    {watchStatus === 'watched' ? 'Deixe outra avaliação' : 'Marcar como assistido'}
+                                </div>
                             </div>
                         </button>
 

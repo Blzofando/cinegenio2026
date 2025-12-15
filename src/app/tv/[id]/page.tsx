@@ -3,7 +3,7 @@
 import { notFound } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { Play, Plus, Star, Calendar, TvMinimal, RotateCcw } from 'lucide-react';
 import { getTMDbDetails, getProviders } from '@/lib/tmdb';
 import DashboardHeader from '@/components/shared/DashboardHeader';
@@ -11,15 +11,22 @@ import VideoPlayerModal from '@/components/shared/VideoPlayerModal';
 import { useWatchStatus } from '@/hooks/useWatchStatus';
 import CombinedPlayButton from '@/components/shared/CombinedPlayButton';
 import { WatchlistContext } from '@/contexts/WatchlistContext';
-import { useContext } from 'react';
 import { filterStartedSeasons } from '@/lib/services/seriesMetadataCache';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/lib/firebase/client';
 import { collection, getDocs } from 'firebase/firestore';
+import { checkWatchedStatus, RatingHistory, RatingType } from '@/lib/watchedService';
 
 interface TVPageProps {
     params: Promise<{ id: string }>;
 }
+
+const RATING_EMOJIS: Record<RatingType, string> = {
+    amei: '❤️',
+    gostei: '👍',
+    meh: '😐',
+    nao_gostei: '👎'
+};
 
 export default function TVPage({ params }: TVPageProps) {
     const { user } = useAuth();
@@ -28,6 +35,16 @@ export default function TVPage({ params }: TVPageProps) {
     const [isLoading, setIsLoading] = useState(true);
     const [resumeData, setResumeData] = useState<{ season?: number; episode?: number } | null>(null);
     const { isInWatchlist, addToWatchlist, removeFromWatchlist } = useContext(WatchlistContext);
+    const [resolvedId, setResolvedId] = useState<number | null>(null);
+    const [ratingHistory, setRatingHistory] = useState<RatingHistory[]>([]);
+
+    useEffect(() => {
+        const resolveId = async () => {
+            const resolvedParams = await params;
+            setResolvedId(parseInt(resolvedParams.id));
+        };
+        resolveId();
+    }, [params]);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -60,17 +77,17 @@ export default function TVPage({ params }: TVPageProps) {
         fetchData();
     }, [params]);
 
-    const [resolvedId, setResolvedId] = React.useState<number | null>(null);
+    const watchStatus = useWatchStatus(resolvedId || 0, 'tv');
 
     useEffect(() => {
-        const resolveId = async () => {
-            const resolvedParams = await params;
-            setResolvedId(parseInt(resolvedParams.id));
-        };
-        resolveId();
-    }, [params]);
-
-    const watchStatus = useWatchStatus(resolvedId || 0, 'tv');
+        if (user && resolvedId) {
+            checkWatchedStatus(user.uid, resolvedId, 'tv').then(data => {
+                if (data?.history) {
+                    setRatingHistory(data.history);
+                }
+            });
+        }
+    }, [user, resolvedId, watchStatus]);
 
     if (isLoading || !tvData) {
         return (
@@ -241,7 +258,7 @@ export default function TVPage({ params }: TVPageProps) {
                                 }}
                                 isInWatchlist={isInWatchlist(tvData.id)}
                                 onStatusChange={() => {
-                                    console.log('Status changed');
+                                    // Refresh logic if needed
                                 }}
                             />
                         </div>
@@ -260,6 +277,94 @@ export default function TVPage({ params }: TVPageProps) {
                     <div className="mt-4 text-gray-400">
                         <p>{numberOfEpisodes} episódios no total</p>
                     </div>
+
+                    {/* Rating History Bubbles - Stacked Design with Grouping */}
+                    {ratingHistory.length > 0 && (
+                        <div className="pt-6 border-t border-gray-800 mt-6">
+                            <div className="flex items-center gap-3">
+                                <div className="flex items-center pl-2">
+                                    {(() => {
+                                        // Grouping Logic
+                                        const groups: { rating: RatingType; seasons: number[]; count: number; comment?: string; watchedAt: any }[] = [];
+
+                                        // Sort by season (if available) or date
+                                        const sortedHistory = [...ratingHistory].sort((a, b) =>
+                                            (a.season || 0) - (b.season || 0) || new Date(b.watchedAt).getTime() - new Date(a.watchedAt).getTime()
+                                        );
+
+                                        sortedHistory.forEach((h) => {
+                                            const lastGroup = groups[groups.length - 1];
+
+                                            // Ensure we treat undefined season as a separate "series" scope or non-season entry
+                                            // You might want to group by rating regardless of season if it's strictly "consecutive" in a list, 
+                                            // but for "T1, T2, T3" they need to be same rating.
+
+                                            if (lastGroup && lastGroup.rating === h.rating && h.season) {
+                                                lastGroup.seasons.push(h.season);
+                                                lastGroup.count++;
+                                                // Keep the latest comment/date if needed, or list them. 
+                                                // For bubble display, usually just "Amei (T1-T3)"
+                                            } else {
+                                                groups.push({
+                                                    rating: h.rating,
+                                                    seasons: h.season ? [h.season] : [],
+                                                    count: 1,
+                                                    comment: h.comment || undefined,
+                                                    watchedAt: h.watchedAt
+                                                });
+                                            }
+                                        });
+
+                                        return groups.map((g, i) => (
+                                            <div
+                                                key={i}
+                                                className={`relative flex items-center justify-center w-10 h-10 rounded-full border-2 border-black bg-gray-800 shadow-xl transition-transform hover:scale-110 hover:z-10 cursor-help ${i > 0 ? '-ml-4' : ''}`}
+                                                title={`${g.seasons.length > 0 ? `Temporadas: ${g.seasons.join(', ')}` : new Date(g.watchedAt?.seconds * 1000).toLocaleDateString()} - ${g.comment || 'Sem comentário'}`}
+                                            >
+                                                <span className="text-lg">{RATING_EMOJIS[g.rating]}</span>
+
+                                                {/* Season Badge for TV - Grouped */}
+                                                {g.seasons.length > 0 && (
+                                                    <span className="absolute -bottom-1 -right-1 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-blue-600 text-[8px] font-bold text-white border border-black z-20">
+                                                        {g.seasons.length > 1
+                                                            ? `T${Math.min(...g.seasons)}-T${Math.max(...g.seasons)}`
+                                                            : `T${g.seasons[0]}`
+                                                        }
+                                                    </span>
+                                                )}
+                                            </div>
+                                        ));
+                                    })()}
+
+                                    {/* Comment Indicator Bubble */}
+                                    {ratingHistory.some(h => h.comment) && (
+                                        <div className="relative flex items-center justify-center w-10 h-10 rounded-full border-2 border-black bg-white/10 backdrop-blur-md shadow-xl -ml-4 z-20">
+                                            <span className="text-sm">💬</span>
+                                            <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white">
+                                                {ratingHistory.filter(h => h.comment).length}
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="flex flex-col">
+                                    <span className="text-sm font-bold text-white">
+                                        {ratingHistory.length} {ratingHistory.length === 1 ? 'Avaliação' : 'Avaliações'}
+                                    </span>
+                                    <span className="text-xs text-gray-400">
+                                        Seu histórico de watch
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Recent Comment Preview */}
+                            {ratingHistory[ratingHistory.length - 1]?.comment && (
+                                <div className="mt-3 p-3 bg-gray-900/50 rounded-xl border border-gray-800 text-sm italic text-gray-400 max-w-lg">
+                                    "{ratingHistory[ratingHistory.length - 1].comment}"
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </section>
 
                 {/* Where to Watch */}

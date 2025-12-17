@@ -97,9 +97,10 @@ function getProviderId(service: StreamingService): number {
 }
 
 /**
- * Enriquece dados com TMDB completo
+ * Enriquece dados com TMDB - RÁPIDO (sem filtro de temporadas)
+ * Retorna dados básicos imediatamente para exibir visual
  */
-async function enrichWithTMDB(quickItem: QuickItemFull, providerId?: number): Promise<RadarItem | null> {
+async function enrichWithTMDBQuick(quickItem: QuickItemFull, providerId?: number): Promise<RadarItem | null> {
     try {
         const tmdbId = quickItem.tmdb.tmdb_id;
         const mediaType = quickItem.tmdb.type === 'movie' ? 'movie' : 'tv';
@@ -138,13 +139,6 @@ async function enrichWithTMDB(quickItem: QuickItemFull, providerId?: number): Pr
             numberOfEpisodes: mediaType === 'tv' ? tmdbData.number_of_episodes : undefined,
         };
 
-        // Filtrar temporadas iniciadas para séries
-        if (mediaType === 'tv' && tmdbData.seasons) {
-            const startedSeasons = await filterStartedSeasons(tmdbId, tmdbData.seasons);
-            radarItem.numberOfSeasons = startedSeasons.length;
-            radarItem.numberOfEpisodes = startedSeasons.reduce((sum: number, s: any) => sum + (s.episode_count || 0), 0);
-        }
-
         // Adicionar providerId apenas se existir
         if (providerId) {
             radarItem.providerId = providerId;
@@ -157,6 +151,17 @@ async function enrichWithTMDB(quickItem: QuickItemFull, providerId?: number): Pr
                 episode_number: tmdbData.next_episode_to_air.episode_number,
                 season_number: tmdbData.next_episode_to_air.season_number,
             };
+        }
+
+        // 🔥 OTIMIZAÇÃO: Filtro de temporadas em BACKGROUND
+        if (mediaType === 'tv' && tmdbData.seasons) {
+            filterStartedSeasons(tmdbId, tmdbData.seasons).then(startedSeasons => {
+                radarItem.numberOfSeasons = startedSeasons.length;
+                radarItem.numberOfEpisodes = startedSeasons.reduce((sum: number, s: any) => sum + (s.episode_count || 0), 0);
+                console.log(`[FlixPatrol] ✅ Background: Filtered seasons for ${radarItem.title}`);
+            }).catch(err => {
+                console.error(`[FlixPatrol] ⚠️ Background filter failed for ${radarItem.title}:`, err);
+            });
         }
 
         return radarItem;
@@ -283,7 +288,7 @@ async function fetchFromFlixPatrolAPI(service: StreamingService): Promise<RadarI
         const enrichedItems: RadarItem[] = [];
 
         for (const item of items) {
-            const enriched = await enrichWithTMDB(item, providerId);
+            const enriched = await enrichWithTMDBQuick(item, providerId);
             if (enriched) {
                 enrichedItems.push(enriched);
             }
@@ -334,7 +339,7 @@ async function fetchGlobalTop10(type: 'movies' | 'series'): Promise<RadarItem[]>
         const enrichedItems: RadarItem[] = [];
 
         for (const item of items) {
-            const enriched = await enrichWithTMDB(item); // Sem providerId para global
+            const enriched = await enrichWithTMDBQuick(item); // Sem providerId para global
             if (enriched) {
                 enrichedItems.push(enriched);
             }
@@ -527,7 +532,7 @@ export async function getHistoricalTop10(
         const enrichedItems: RadarItem[] = [];
 
         for (const item of items) {
-            const enriched = await enrichWithTMDB(item, providerId);
+            const enriched = await enrichWithTMDBQuick(item, providerId);
             if (enriched) {
                 enrichedItems.push(enriched);
             }

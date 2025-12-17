@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { RadarItem } from '@/types';
 import TopTenCarousel from '@/components/shared/TopTenCarousel';
@@ -20,53 +20,52 @@ export default function MoviesPage() {
     const [popularMovies, setPopularMovies] = useState<RadarItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [highlights, setHighlights] = useState<HighlightItem[]>([]);
-    const [hasTriggeredPopulate, setHasTriggeredPopulate] = useState(false);
 
     useEffect(() => {
-        // Listen to public/upcoming
-        const unsubUpcoming = onSnapshot(doc(db, 'public', 'upcoming'), (docSnap) => {
-            if (docSnap.exists()) {
-                const data = docSnap.data();
-                const allItems = data.items || [];
-                setUpcomingMovies(allItems.filter((r: RadarItem) => r.tmdbMediaType === 'movie').slice(0, 20));
-            } else {
-                console.warn('[Movies Page] Document public/upcoming does not exist');
-                setUpcomingMovies([]);
-                if (!hasTriggeredPopulate) {
-                    console.log('[Movies Page] Triggering populate-radar...');
-                    setHasTriggeredPopulate(true);
-                    fetch('/api/populate-radar', { method: 'POST' })
-                        .then(res => res.json())
-                        .then(data => console.log('[Movies Page] Populate result:', data))
-                        .catch(err => console.error('[Movies Page] Populate error:', err));
+        // Fetch public data once (updates on F5 only)
+        const loadPublicData = async () => {
+            try {
+                // Fetch upcoming
+                const upcomingSnap = await getDoc(doc(db, 'public', 'upcoming'));
+                if (upcomingSnap.exists()) {
+                    const data = upcomingSnap.data();
+                    const allItems = data.items || [];
+                    setUpcomingMovies(allItems.filter((r: RadarItem) => r.tmdbMediaType === 'movie').slice(0, 20));
+                } else {
+                    console.warn('[Movies Page] Document public/upcoming does not exist');
+                    setUpcomingMovies([]);
                 }
-            }
-        });
 
-        // Listen to public/now-playing
-        const unsubNowPlaying = onSnapshot(doc(db, 'public', 'now-playing'), (docSnap) => {
-            if (docSnap.exists()) {
-                const data = docSnap.data();
-                const allItems = data.items || [];
-                setNowPlayingMovies(allItems.filter((r: RadarItem) => r.tmdbMediaType === 'movie').slice(0, 20));
-            } else {
-                console.warn('[Movies Page] Document public/now-playing does not exist');
-                setNowPlayingMovies([]);
-            }
-            setIsLoading(false);
-        });
+                // Fetch now-playing
+                const nowPlayingSnap = await getDoc(doc(db, 'public', 'now-playing'));
+                if (nowPlayingSnap.exists()) {
+                    const data = nowPlayingSnap.data();
+                    const allItems = data.items || [];
+                    setNowPlayingMovies(allItems.filter((r: RadarItem) => r.tmdbMediaType === 'movie').slice(0, 20));
+                } else {
+                    console.warn('[Movies Page] Document public/now-playing does not exist');
+                    setNowPlayingMovies([]);
+                }
 
-        // Listen to public/popular-movies
-        const unsubPopular = onSnapshot(doc(db, 'public', 'popular-movies'), (docSnap) => {
-            if (docSnap.exists()) {
-                const data = docSnap.data();
-                const allItems = data.items || [];
-                setPopularMovies(allItems.filter((r: RadarItem) => r.tmdbMediaType === 'movie').slice(0, 20));
-            } else {
-                console.warn('[Movies Page] Document public/popular-movies does not exist');
-                setPopularMovies([]);
+                // Fetch popular
+                const popularSnap = await getDoc(doc(db, 'public', 'popular-movies'));
+                if (popularSnap.exists()) {
+                    const data = popularSnap.data();
+                    const allItems = data.items || [];
+                    setPopularMovies(allItems.filter((r: RadarItem) => r.tmdbMediaType === 'movie').slice(0, 20));
+                } else {
+                    console.warn('[Movies Page] Document public/popular-movies does not exist');
+                    setPopularMovies([]);
+                }
+
+                setIsLoading(false);
+            } catch (error) {
+                console.error('[Movies Page] Error loading public data:', error);
+                setIsLoading(false);
             }
-        });
+        };
+
+        loadPublicData();
 
         // Load highlights
         const loadHighlights = async () => {
@@ -74,13 +73,7 @@ export default function MoviesPage() {
             setHighlights(items);
         };
         loadHighlights();
-
-        return () => {
-            unsubUpcoming();
-            unsubNowPlaying();
-            unsubPopular();
-        };
-    }, [hasTriggeredPopulate]);
+    }, []); // Only run on mount (F5 updates)
 
     // No longer needed - using FlixPatrol API directly in component
 

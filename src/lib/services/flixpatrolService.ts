@@ -185,241 +185,77 @@ function removeUndefined<T extends Record<string, any>>(obj: T): T {
 }
 
 /**
- * Checks Firebase cache (stale-while-revalidate)
+ * READ-ONLY: Gets from Firebase cache (NO API fetching)
+ * Cache is updated by cron job at /api/cron/update
  */
-async function getFromFirebaseCache(
-    cacheType: CacheType,
-    revalidateFn?: () => Promise<void>
-): Promise<RadarItem[] | null> {
+async function getFromFirebaseCache(cacheType: CacheType): Promise<RadarItem[] | null> {
     try {
+        // Check memory cache first
         const memCached = memoryCache.get(cacheType);
         if (memCached && Date.now() < memCached.expiresAt) {
-            console.log(`[Public Cache] Memory hit: ${cacheType}`);
+            console.log(`[FlixPatrol] Memory cache hit: ${cacheType}`);
             return memCached.data;
         }
 
+        // Read from Firebase
         const docRef = doc(db, 'public', cacheType);
         const docSnap = await getDoc(docRef);
 
         if (docSnap.exists()) {
             const data = docSnap.data() as PublicCacheDoc;
 
-            if (Date.now() < data.expiresAt) {
-                console.log(`[Public Cache] Firebase hit (valid): ${cacheType}`);
-                memoryCache.set(cacheType, { data: data.items, expiresAt: data.expiresAt });
-                return data.items;
-            } else {
-                console.log(`[Public Cache] Stale data - serving + revalidating`);
-                if (revalidateFn) {
-                    revalidateFn().catch(err => console.error(`[Public Cache] Revalidation failed:`, err));
-                }
-                return data.items;
+            // Cache in memory
+            memoryCache.set(cacheType, {
+                data: data.items,
+                expiresAt: data.expiresAt || Date.now() + CACHE_DURATION
+            });
+
+            console.log(`[FlixPatrol] Firebase cache hit: ${cacheType} (${data.items.length} items)`);
+
+            // Warn if stale
+            if (Date.now() > (data.expiresAt || 0)) {
+                console.warn(`[FlixPatrol] ⚠️ Cache is stale for ${cacheType}. Cron should update it.`);
             }
+
+            return data.items;
         }
 
+        console.warn(`[FlixPatrol] ❌ No cache found for ${cacheType}`);
         return null;
     } catch (error) {
-        console.error(`[Public Cache] Error reading cache:`, error);
+        console.error(`[FlixPatrol] Error reading cache:`, error);
         return null;
     }
 }
 
 /**
- * Saves data to Firebase cache (remove undefined fields)
- */
-async function saveToFirebaseCache(cacheType: CacheType, items: RadarItem[]): Promise<void> {
-    try {
-        const now = Date.now();
-        const expiresAt = now + CACHE_DURATION;
-
-        // Remover campos undefined de cada item
-        const cleanedItems = items.map(item => removeUndefined(item));
-
-        const cacheDoc = removeUndefined({
-            items: cleanedItems,
-            lastUpdated: now,
-            expiresAt,
-            cacheType,
-        });
-
-        const docRef = doc(db, 'public', cacheType);
-        await setDoc(docRef, cacheDoc);
-
-        memoryCache.set(cacheType, { data: items, expiresAt });
-
-        console.log(`[Public Cache] Saved ${items.length} items to ${cacheType}`);
-    } catch (error) {
-        console.error(`[Public Cache] Error saving cache:`, error);
-    }
-}
-
-/**
- * Fetches from FlixPatrol /api/firebase/latest with TMDB enrichment
- */
-async function fetchFromFlixPatrolAPI(service: StreamingService): Promise<RadarItem[]> {
-    const apiKey = process.env.NEXT_PUBLIC_FLIXPATROL_API_KEY;
-
-    if (!apiKey) {
-        console.error('[FlixPatrol] API Key not found');
-        return [];
-    }
-
-    try {
-        // API Quick: /api/quick/:service/:type?format=full
-        const url = `${API_BASE_URL}/api/quick/${service}/overall?format=full`;
-        console.log(`[FlixPatrol] Fetching ${service} from ${url}`);
-
-        const response = await fetch(url, {
-            headers: { 'X-API-Key': apiKey },
-        });
-
-        if (!response.ok) {
-            console.error(`[FlixPatrol] HTTP ${response.status}`);
-            return [];
-        }
-
-        const responseData: { service: string; date: string; type: string; data: QuickItemFull[] } = await response.json();
-        const items = responseData.data || [];
-
-        console.log(`[FlixPatrol] Received ${items.length} items for ${service}`);
-
-        // Enriquecer com TMDB completo (um por vez para evitar rate limit)
-        const providerId = getProviderId(service);
-        const enrichedItems: RadarItem[] = [];
-
-        for (const item of items) {
-            const enriched = await enrichWithTMDBQuick(item, providerId);
-            if (enriched) {
-                enrichedItems.push(enriched);
-            }
-            // Pequeno delay
-            await new Promise(resolve => setTimeout(resolve, 100));
-        }
-
-        console.log(`[FlixPatrol] Enriched ${enrichedItems.length}/${items.length} items`);
-
-        return enrichedItems;
-    } catch (error) {
-        console.error(`[FlixPatrol] Error:`, error);
-        return [];
-    }
-}
-
-/**
- * Fetches global Top 10 (movies or series)
- */
-async function fetchGlobalTop10(type: 'movies' | 'series'): Promise<RadarItem[]> {
-    const apiKey = process.env.NEXT_PUBLIC_FLIXPATROL_API_KEY;
-
-    if (!apiKey) {
-        console.error('[FlixPatrol] API Key not found');
-        return [];
-    }
-
-    try {
-        // API Quick: /api/quick/global?format=full (retorna .movies e .series)
-        const url = `${API_BASE_URL}/api/quick/global?format=full`;
-        console.log(`[FlixPatrol] Fetching global ${type} from ${url}`);
-
-        const response = await fetch(url, {
-            headers: { 'X-API-Key': apiKey },
-        });
-
-        if (!response.ok) {
-            console.error(`[FlixPatrol] HTTP ${response.status}`);
-            return [];
-        }
-
-        const data: { movies?: QuickItemFull[], series?: QuickItemFull[] } = await response.json();
-        const items = type === 'movies' ? (data.movies || []) : (data.series || []);
-
-        console.log(`[FlixPatrol] Received ${items.length} global ${type}`);
-
-        // Enriquecer com TMDB completo
-        const enrichedItems: RadarItem[] = [];
-
-        for (const item of items) {
-            const enriched = await enrichWithTMDBQuick(item); // Sem providerId para global
-            if (enriched) {
-                enrichedItems.push(enriched);
-            }
-            await new Promise(resolve => setTimeout(resolve, 100));
-        }
-
-        console.log(`[FlixPatrol] Enriched ${enrichedItems.length}/${items.length} global ${type}`);
-
-        return enrichedItems;
-    } catch (error) {
-        console.error(`[FlixPatrol] Error:`, error);
-        return [];
-    }
-}
-
-/**
- * Gets Top 10 for a streaming service
+ * Gets Top 10 for a streaming service (READ-ONLY)
  */
 export async function getTop10(service: StreamingService): Promise<RadarItem[]> {
     const cacheType: CacheType = `top10-${service}`;
+    const cachedData = await getFromFirebaseCache(cacheType);
 
-    const revalidate = async () => {
-        const freshData = await fetchFromFlixPatrolAPI(service);
-        if (freshData.length > 0) {
-            await saveToFirebaseCache(cacheType, freshData);
-        }
-    };
-
-    const cachedData = await getFromFirebaseCache(cacheType, revalidate);
     if (cachedData && cachedData.length > 0) {
         return cachedData;
     }
 
-    console.log(`[Public Cache] Cache miss for ${cacheType}`);
-    const freshData = await fetchFromFlixPatrolAPI(service);
-
-    if (freshData.length > 0) {
-        await saveToFirebaseCache(cacheType, freshData);
-    }
-
-    return freshData;
+    console.warn(`[FlixPatrol] No data for ${cacheType}. Cron job may not have run yet.`);
+    return [];
 }
 
 /**
- * Gets global Top 10 (movies or series)
+ * Gets global Top 10 (movies or series) (READ-ONLY)
  */
 export async function getGlobalTop10(type: 'movies' | 'series'): Promise<RadarItem[]> {
     const cacheType: CacheType = `global-${type}`;
+    const cachedData = await getFromFirebaseCache(cacheType);
 
-    const revalidate = async () => {
-        const freshData = await fetchGlobalTop10(type);
-        if (freshData.length > 0) {
-            await saveToFirebaseCache(cacheType, freshData);
-        }
-    };
-
-    const cachedData = await getFromFirebaseCache(cacheType, revalidate);
     if (cachedData && cachedData.length > 0) {
         return cachedData;
     }
 
-    console.log(`[Public Cache] Cache miss for ${cacheType}`);
-    const freshData = await fetchGlobalTop10(type);
-
-    if (freshData.length > 0) {
-        await saveToFirebaseCache(cacheType, freshData);
-    }
-
-    return freshData;
-}
-
-/**
- * Forces a refresh
- */
-export async function forceRefresh(service: StreamingService): Promise<RadarItem[]> {
-    const freshData = await fetchFromFlixPatrolAPI(service);
-    if (freshData.length > 0) {
-        await saveToFirebaseCache(`top10-${service}`, freshData);
-    }
-    return freshData;
+    console.warn(`[FlixPatrol] No data for ${cacheType}. Cron job may not have run yet.`);
+    return [];
 }
 
 /**

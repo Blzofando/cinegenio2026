@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { RadarItem } from '@/types';
 import TopTenCarousel from '@/components/shared/TopTenCarousel';
@@ -19,41 +19,41 @@ export default function TVPage() {
     const [popularTV, setPopularTV] = useState<RadarItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [highlights, setHighlights] = useState<HighlightItem[]>([]);
-    const [hasTriggeredPopulate, setHasTriggeredPopulate] = useState(false);
 
     useEffect(() => {
-        // Listen to public/on-the-air
-        const unsubOnTheAir = onSnapshot(doc(db, 'public', 'on-the-air'), (docSnap) => {
-            if (docSnap.exists()) {
-                const data = docSnap.data();
-                const allItems = data.items || [];
-                setOnTheAirTV(allItems.filter((r: RadarItem) => r.tmdbMediaType === 'tv').slice(0, 20));
-            } else {
-                console.warn('[TV Page] Document public/on-the-air does not exist');
-                setOnTheAirTV([]);
-                if (!hasTriggeredPopulate) {
-                    console.log('[TV Page] Triggering populate-radar...');
-                    setHasTriggeredPopulate(true);
-                    fetch('/api/populate-radar', { method: 'POST' })
-                        .then(res => res.json())
-                        .then(data => console.log('[TV Page] Populate result:', data))
-                        .catch(err => console.error('[TV Page] Populate error:', err));
+        // Fetch public data once (updates on F5 only)
+        const loadPublicData = async () => {
+            try {
+                // Fetch on-the-air
+                const onTheAirSnap = await getDoc(doc(db, 'public', 'on-the-air'));
+                if (onTheAirSnap.exists()) {
+                    const data = onTheAirSnap.data();
+                    const allItems = data.items || [];
+                    setOnTheAirTV(allItems.filter((r: RadarItem) => r.tmdbMediaType === 'tv').slice(0, 20));
+                } else {
+                    console.warn('[TV Page] Document public/on-the-air does not exist');
+                    setOnTheAirTV([]);
                 }
-            }
-            setIsLoading(false);
-        });
 
-        // Listen to public/popular-tv
-        const unsubPopular = onSnapshot(doc(db, 'public', 'popular-tv'), (docSnap) => {
-            if (docSnap.exists()) {
-                const data = docSnap.data();
-                const allItems = data.items || [];
-                setPopularTV(allItems.filter((r: RadarItem) => r.tmdbMediaType === 'tv').slice(0, 20));
-            } else {
-                console.warn('[TV Page] Document public/popular-tv does not exist');
-                setPopularTV([]);
+                // Fetch popular
+                const popularSnap = await getDoc(doc(db, 'public', 'popular-tv'));
+                if (popularSnap.exists()) {
+                    const data = popularSnap.data();
+                    const allItems = data.items || [];
+                    setPopularTV(allItems.filter((r: RadarItem) => r.tmdbMediaType === 'tv').slice(0, 20));
+                } else {
+                    console.warn('[TV Page] Document public/popular-tv does not exist');
+                    setPopularTV([]);
+                }
+
+                setIsLoading(false);
+            } catch (error) {
+                console.error('[TV Page] Error loading public data:', error);
+                setIsLoading(false);
             }
-        });
+        };
+
+        loadPublicData();
 
         // Load highlights
         const loadHighlights = async () => {
@@ -61,12 +61,7 @@ export default function TVPage() {
             setHighlights(items);
         };
         loadHighlights();
-
-        return () => {
-            unsubOnTheAir();
-            unsubPopular();
-        };
-    }, [hasTriggeredPopulate]);
+    }, []); // Only run on mount (F5 updates)
 
     return (
         <div className="min-h-screen bg-gradient-to-b from-black via-gray-900 to-black text-white pb-16 md:pb-0">

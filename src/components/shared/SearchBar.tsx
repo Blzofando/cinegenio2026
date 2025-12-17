@@ -76,7 +76,7 @@ const SearchBar: React.FC = () => {
                     onChange={(e) => setQuery(e.target.value)}
                     onFocus={() => query && setShowResults(true)}
                     placeholder="Buscar filmes e séries..."
-                    className="w-48 md:w-56 lg:w-64 xl:w-80 px-4 py-2.5 pl-10 
+                    className="w-full sm:w-48 md:w-56 lg:w-64 xl:w-80 px-4 py-2.5 pl-10 
                                bg-white/5 backdrop-blur-md border border-white/10
                                rounded-full text-white text-sm placeholder-gray-400
                                focus:bg-white/10 focus:border-purple-500/50 focus:outline-none focus:ring-2 focus:ring-purple-500/20
@@ -104,7 +104,7 @@ const SearchBar: React.FC = () => {
                         className="fixed inset-0 z-40"
                         onClick={() => setShowResults(false)}
                     />
-                    <div className="absolute top-full mt-2 right-0 w-[500px] max-h-[600px] overflow-y-auto bg-zinc-900 border border-white/10 rounded-lg shadow-2xl z-50">
+                    <div className="absolute top-full mt-2 left-0 right-0 sm:right-0 sm:left-auto sm:w-[400px] md:w-[500px] max-h-[70vh] sm:max-h-[600px] overflow-y-auto bg-zinc-900 border border-white/10 rounded-lg shadow-2xl z-50">
                         {results.map((result) => (
                             <Link
                                 key={`${result.media_type}-${result.id}`}
@@ -113,10 +113,10 @@ const SearchBar: React.FC = () => {
                                     setQuery('');
                                     setShowResults(false);
                                 }}
-                                className="flex gap-3 p-3 hover:bg-white/10 transition-colors border-b border-white/5 last:border-0"
+                                className="flex gap-2 sm:gap-3 p-2 sm:p-3 hover:bg-white/10 transition-colors border-b border-white/5 last:border-0"
                             >
                                 {/* Poster */}
-                                <div className="relative w-16 h-24 flex-shrink-0 bg-zinc-800 rounded overflow-hidden">
+                                <div className="relative w-12 h-18 sm:w-16 sm:h-24 flex-shrink-0 bg-zinc-800 rounded overflow-hidden">
                                     {result.poster_path ? (
                                         <Image
                                             src={`https://image.tmdb.org/t/p/w92${result.poster_path}`}
@@ -133,11 +133,11 @@ const SearchBar: React.FC = () => {
 
                                 {/* Info */}
                                 <div className="flex-1 min-w-0">
-                                    <h3 className="font-semibold text-white truncate">
+                                    <h3 className="font-semibold text-white truncate text-sm sm:text-base">
                                         {result.title || result.name}
                                     </h3>
 
-                                    <div className="flex items-center gap-2 text-sm text-white/60 mt-1">
+                                    <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-white/60 mt-1 flex-wrap">
                                         <span className="px-2 py-0.5 bg-purple-600/30 text-purple-300 rounded text-xs font-medium">
                                             {result.media_type === 'movie' ? 'Filme' : 'Série'}
                                         </span>
@@ -165,7 +165,7 @@ const SearchBar: React.FC = () => {
 
             {/* Loading State */}
             {isLoading && showResults && (
-                <div className="absolute top-full mt-2 right-0 w-[500px] p-4 bg-zinc-900 border border-white/10 rounded-lg shadow-2xl z-50">
+                <div className="absolute top-full mt-2 left-0 right-0 sm:right-0 sm:left-auto sm:w-[400px] md:w-[500px] p-4 bg-zinc-900 border border-white/10 rounded-lg shadow-2xl z-50">
                     <div className="text-center text-white/50">
                         Buscando...
                     </div>

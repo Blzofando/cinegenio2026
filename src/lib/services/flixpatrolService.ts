@@ -260,8 +260,8 @@ async function fetchFromFlixPatrolAPI(service: StreamingService): Promise<RadarI
     }
 
     try {
-        // API Quick: /api/quick/:service/:type
-        const url = `${API_BASE_URL}/api/quick/${service}/overall`;
+        // API Quick: /api/quick/:service/:type?format=full
+        const url = `${API_BASE_URL}/api/quick/${service}/overall?format=full`;
         console.log(`[FlixPatrol] Fetching ${service} from ${url}`);
 
         const response = await fetch(url, {
@@ -273,8 +273,8 @@ async function fetchFromFlixPatrolAPI(service: StreamingService): Promise<RadarI
             return [];
         }
 
-        const data: { overall?: QuickItemFull[] } = await response.json();
-        const items = data.overall || [];
+        const responseData: { service: string; date: string; type: string; data: QuickItemFull[] } = await response.json();
+        const items = responseData.data || [];
 
         console.log(`[FlixPatrol] Received ${items.length} items for ${service}`);
 
@@ -312,8 +312,8 @@ async function fetchGlobalTop10(type: 'movies' | 'series'): Promise<RadarItem[]>
     }
 
     try {
-        // Nova API: mantém /api/quick/global (retorna .movies e .series)
-        const url = `${API_BASE_URL}/api/quick/global`;
+        // API Quick: /api/quick/global?format=full (retorna .movies e .series)
+        const url = `${API_BASE_URL}/api/quick/global?format=full`;
         console.log(`[FlixPatrol] Fetching global ${type} from ${url}`);
 
         const response = await fetch(url, {

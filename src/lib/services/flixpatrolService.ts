@@ -33,6 +33,48 @@ interface QuickItemFull {
     };
 }
 
+// Calendar API response types
+interface CalendarMovie {
+    title: string;
+    date: string;
+    imdb_id: string;
+    type: 'movie';
+    tmdb?: {
+        tmdb_id: number;
+        type: 'movie';
+        title: string;
+        overview: string;
+        poster_path: string;
+        backdrop_path: string;
+        vote_average: number;
+        release_date: string;
+        genres: string[];
+    };
+}
+
+interface CalendarTVShow {
+    title: string;
+    date: string;
+    platform: string;
+    country: string;
+    genres: string[];
+    type: 'tv';
+    tmdb?: {
+        tmdb_id: number;
+        type: 'tv';
+        title: string;
+        overview: string;
+        poster_path: string;
+        backdrop_path: string;
+        vote_average: number;
+        release_date: string;
+        genres: string[];
+    };
+}
+
+type CalendarItem = CalendarMovie | CalendarTVShow;
+
+
 interface PublicCacheDoc {
     items: RadarItem[];
     lastUpdated: number;
@@ -207,7 +249,7 @@ async function saveToFirebaseCache(cacheType: CacheType, items: RadarItem[]): Pr
 }
 
 /**
- * Fetches from FlixPatrol /api/quick with TMDB enrichment
+ * Fetches from FlixPatrol /api/firebase/latest with TMDB enrichment
  */
 async function fetchFromFlixPatrolAPI(service: StreamingService): Promise<RadarItem[]> {
     const apiKey = process.env.NEXT_PUBLIC_FLIXPATROL_API_KEY;
@@ -218,8 +260,9 @@ async function fetchFromFlixPatrolAPI(service: StreamingService): Promise<RadarI
     }
 
     try {
-        const url = `${API_BASE_URL}/api/quick/${service}`;
-        console.log(`[FlixPatrol] Fetching ${service}`);
+        // Nova API: /api/firebase/latest/:service/:type
+        const url = `${API_BASE_URL}/api/firebase/latest/${service}/overall`;
+        console.log(`[FlixPatrol] Fetching ${service} from ${url}`);
 
         const response = await fetch(url, {
             headers: { 'X-API-Key': apiKey },
@@ -269,9 +312,9 @@ async function fetchGlobalTop10(type: 'movies' | 'series'): Promise<RadarItem[]>
     }
 
     try {
-        // Endpoint correto: /api/quick/global (retorna .movies e .series)
+        // Nova API: mantém /api/quick/global (retorna .movies e .series)
         const url = `${API_BASE_URL}/api/quick/global`;
-        console.log(`[FlixPatrol] Fetching global ${type}`);
+        console.log(`[FlixPatrol] Fetching global ${type} from ${url}`);
 
         const response = await fetch(url, {
             headers: { 'X-API-Key': apiKey },
@@ -382,5 +425,118 @@ export async function clearLocalCache(cacheType?: CacheType): Promise<void> {
         memoryCache.delete(cacheType);
     } else {
         memoryCache.clear();
+    }
+}
+
+/**
+ * Gets calendar data for upcoming releases
+ */
+export async function getCalendar(type: 'movies' | 'tv-shows' | 'overall'): Promise<RadarItem[]> {
+    const apiKey = process.env.NEXT_PUBLIC_FLIXPATROL_API_KEY;
+
+    if (!apiKey) {
+        console.error('[FlixPatrol] API Key not found');
+        return [];
+    }
+
+    try {
+        const url = `${API_BASE_URL}/api/quick/calendar/${type}`;
+        console.log(`[FlixPatrol] Fetching calendar ${type} from ${url}`);
+
+        const response = await fetch(url, {
+            headers: { 'X-API-Key': apiKey },
+        });
+
+        if (!response.ok) {
+            console.error(`[FlixPatrol] HTTP ${response.status}`);
+            return [];
+        }
+
+        const items: CalendarItem[] = await response.json();
+        console.log(`[FlixPatrol] Received ${items.length} calendar items for ${type}`);
+
+        // Enriquecer com TMDB se não tiver dados
+        const enrichedItems: RadarItem[] = [];
+
+        for (const item of items) {
+            if (item.tmdb) {
+                // Já tem dados TMDB, converter para RadarItem
+                const radarItem: RadarItem = {
+                    id: item.tmdb.tmdb_id,
+                    tmdbMediaType: item.tmdb.type,
+                    title: item.tmdb.title,
+                    releaseDate: item.date,
+                    type: item.tmdb.type,
+                    listType: 'upcoming',
+                    posterUrl: item.tmdb.poster_path ? `https://image.tmdb.org/t/p/w500${item.tmdb.poster_path}` : undefined,
+                    backdropUrl: item.tmdb.backdrop_path ? `https://image.tmdb.org/t/p/original${item.tmdb.backdrop_path}` : undefined,
+                    overview: item.tmdb.overview,
+                    voteAverage: item.tmdb.vote_average,
+                    genres: item.tmdb.genres,
+                };
+                enrichedItems.push(removeUndefined(radarItem));
+            }
+            await new Promise(resolve => setTimeout(resolve, 50));
+        }
+
+        return enrichedItems;
+    } catch (error) {
+        console.error(`[FlixPatrol] Calendar error:`, error);
+        return [];
+    }
+}
+
+/**
+ * Gets historical Top 10 for a specific date
+ * @param service - Streaming service (netflix, disney, hbo, prime, apple, globoplay)
+ * @param type - Type (movies, shows, overall)
+ * @param date - Date in YYYY-MM-DD format
+ */
+export async function getHistoricalTop10(
+    service: 'netflix' | 'disney' | 'hbo' | 'prime' | 'apple' | 'globoplay',
+    type: 'movies' | 'shows' | 'overall',
+    date: string
+): Promise<RadarItem[]> {
+    const apiKey = process.env.NEXT_PUBLIC_FLIXPATROL_API_KEY;
+
+    if (!apiKey) {
+        console.error('[FlixPatrol] API Key not found');
+        return [];
+    }
+
+    try {
+        const url = `${API_BASE_URL}/api/firebase/history/${service}/${type}/${date}`;
+        console.log(`[FlixPatrol] Fetching historical ${service} ${type} for ${date}`);
+
+        const response = await fetch(url, {
+            headers: { 'X-API-Key': apiKey },
+        });
+
+        if (!response.ok) {
+            console.error(`[FlixPatrol] HTTP ${response.status}`);
+            return [];
+        }
+
+        const data: { [key: string]: QuickItemFull[] } = await response.json();
+        const items = data[type] || [];
+
+        console.log(`[FlixPatrol] Received ${items.length} historical items`);
+
+        // Enriquecer com TMDB
+        const providerId = service === 'globoplay' ? undefined : getProviderId(service as StreamingService);
+        const enrichedItems: RadarItem[] = [];
+
+        for (const item of items) {
+            const enriched = await enrichWithTMDB(item, providerId);
+            if (enriched) {
+                enrichedItems.push(enriched);
+            }
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+
+        return enrichedItems;
+    } catch (error) {
+        console.error(`[FlixPatrol] Historical data error:`, error);
+        return [];
     }
 }

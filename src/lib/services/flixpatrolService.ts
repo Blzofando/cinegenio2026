@@ -260,8 +260,8 @@ async function fetchFromFlixPatrolAPI(service: StreamingService): Promise<RadarI
     }
 
     try {
-        // Nova API: /api/firebase/latest/:service/:type
-        const url = `${API_BASE_URL}/api/firebase/latest/${service}/overall`;
+        // API Quick: /api/quick/:service/:type
+        const url = `${API_BASE_URL}/api/quick/${service}/overall`;
         console.log(`[FlixPatrol] Fetching ${service} from ${url}`);
 
         const response = await fetch(url, {

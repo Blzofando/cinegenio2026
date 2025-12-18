@@ -15,6 +15,7 @@ type StreamingService = 'netflix' | 'prime' | 'disney' | 'hbo' | 'apple';
 interface QuickItemID {
     position: number;
     title: string;
+    type: 'movie' | 'tv';
     tmdb_id: number;
 }
 
@@ -223,7 +224,8 @@ export async function updateTop10Cache(): Promise<string[]> {
             const enrichedItems: RadarItem[] = [];
 
             for (const item of items.slice(0, 10)) {
-                const mediaType = await guessMediaType(item.tmdb_id);
+                // Usar o type da resposta da API (movie ou tv)
+                const mediaType = item.type === 'movie' ? 'movie' : 'tv';
                 const enriched = await enrichWithTMDB(item.tmdb_id, mediaType, providerMap[service]);
 
                 if (enriched) {
@@ -301,20 +303,7 @@ export async function updateTop10Cache(): Promise<string[]> {
     }
 }
 
-/**
- * Guess media type from TMDB ID (movie vs tv)
- */
-async function guessMediaType(tmdbId: number): Promise<'movie' | 'tv'> {
-    try {
-        const movieResponse = await fetch(
-            `https://api.themoviedb.org/3/movie/${tmdbId}?api_key=${process.env.NEXT_PUBLIC_TMDB_API_KEY}`
-        );
-        if (movieResponse.ok) return 'movie';
-        return 'tv';
-    } catch {
-        return 'movie';
-    }
-}
+
 
 /**
  * Update TMDB carousels (upcoming, now-playing, popular)

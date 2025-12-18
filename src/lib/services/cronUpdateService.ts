@@ -5,12 +5,12 @@ import { filterStartedSeasons } from './seriesMetadataCache';
 
 const API_BASE_URL = 'https://top-10-streamings.onrender.com';
 const CACHE_VALIDITY = {
-    TOP_10: 60 * 60 * 1000, // 1 hour
-    TMDB_CAROUSELS: 60 * 60 * 1000, // 1 hour
+    TOP_10: 30 * 60 * 1000, // 30 minutos
+    TMDB_CAROUSELS: 60 * 60 * 1000, // 1 hora
     CALENDAR: 3 * 60 * 60 * 1000, // 3 hours (futuro)
 };
 
-type StreamingService = 'netflix' | 'prime' | 'disney' | 'hbo' | 'apple';
+export type StreamingService = 'netflix' | 'prime' | 'disney' | 'hbo' | 'apple';
 
 interface QuickItemID {
     position: number;
@@ -303,6 +303,25 @@ export async function updateTop10Cache(): Promise<string[]> {
     }
 }
 
+/**
+ * Detect media type (movie vs tv) by trying both
+ */
+async function detectMediaType(tmdbId: number): Promise<'movie' | 'tv'> {
+    const apiKey = process.env.TMDB_API_KEY || process.env.NEXT_PUBLIC_TMDB_API_KEY;
+
+    try {
+        // Try movie first
+        const movieRes = await fetch(
+            `https://api.themoviedb.org/3/movie/${tmdbId}?api_key=${apiKey}`
+        );
+        if (movieRes.ok) return 'movie';
+
+        // Otherwise it's tv
+        return 'tv';
+    } catch {
+        return 'movie'; // Default fallback
+    }
+}
 
 
 /**
@@ -475,6 +494,152 @@ export async function updateTMDBCarousels(): Promise<string[]> {
         return updates;
     } catch (error) {
         console.error('[Cron] Error updating TMDB carousels:', error);
+        throw error;
+    }
+}
+
+/**
+ * Update a single streaming service
+ */
+export async function updateSingleService(service: StreamingService): Promise<string[]> {
+    const apiKey = process.env.FLIXPATROL_API_KEY || process.env.NEXT_PUBLIC_FLIXPATROL_API_KEY;
+    if (!apiKey) {
+        throw new Error('FlixPatrol API key not found');
+    }
+
+    const updates: string[] = [];
+
+    try {
+        // Fetch all data
+        const response = await fetch(`${API_BASE_URL}/api/quick/overall?format=id`, {
+            headers: { 'X-API-Key': apiKey },
+        });
+
+        if (!response.ok) {
+            throw new Error(`FlixPatrol API error: ${response.status}`);
+        }
+
+        const data: QuickOverallResponse = await response.json();
+
+        const providerMap: Record<StreamingService, number> = {
+            netflix: 8,
+            prime: 119,
+            disney: 337,
+            hbo: 1899,
+            apple: 350,
+        };
+
+        const items = data[service] as QuickItemID[];
+        console.log(`[Cron] Processing ${items.length} items for ${service}`);
+
+        const enrichedItems: RadarItem[] = [];
+
+        for (const item of items.slice(0, 10)) {
+            // API retorna 'overall' no type, precisamos detectar
+            // Usar heurística: séries geralmente têm IDs menores no TMDB
+            const mediaType = await detectMediaType(item.tmdb_id);
+            console.log(`[Cron] Item "${item.title}" (${item.tmdb_id}) - detected: "${mediaType}"`);
+            const enriched = await enrichWithTMDB(item.tmdb_id, mediaType, providerMap[service]);
+
+            if (enriched) {
+                enrichedItems.push(enriched);
+            }
+
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+
+        // Save to Firebase
+        const cleanedItems = enrichedItems.map(item => removeUndefined(item));
+        const docRef = db.collection('public').doc(`top10-${service}`);
+        await docRef.set({
+            items: cleanedItems,
+            lastUpdated: Date.now(),
+            expiresAt: Date.now() + CACHE_VALIDITY.TOP_10,
+            cacheType: `top10-${service}`,
+        });
+
+        updates.push(`top10-${service} (${enrichedItems.length} items)`);
+        console.log(`[Cron] ✅ Updated top10-${service}`);
+
+        return updates;
+    } catch (error) {
+        console.error(`[Cron] Error updating ${service}:`, error);
+        throw error;
+    }
+}
+
+/**
+ * Update global movies and series cache
+ */
+export async function updateGlobalCache(): Promise<string[]> {
+    const apiKey = process.env.FLIXPATROL_API_KEY || process.env.NEXT_PUBLIC_FLIXPATROL_API_KEY;
+    if (!apiKey) {
+        throw new Error('FlixPatrol API key not found');
+    }
+
+    const updates: string[] = [];
+
+    try {
+        // Fetch all data
+        const response = await fetch(`${API_BASE_URL}/api/quick/overall?format=id`, {
+            headers: { 'X-API-Key': apiKey },
+        });
+
+        if (!response.ok) {
+            throw new Error(`FlixPatrol API error: ${response.status}`);
+        }
+
+        const data: QuickOverallResponse = await response.json();
+
+        if (data.global) {
+            const { movies, series } = data.global;
+
+            // Movies
+            if (movies?.length) {
+                const enrichedMovies: RadarItem[] = [];
+                for (const item of movies.slice(0, 10)) {
+                    const enriched = await enrichWithTMDB(item.tmdb_id, 'movie');
+                    if (enriched) enrichedMovies.push(enriched);
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+
+                const cleanedMovies = enrichedMovies.map(item => removeUndefined(item));
+                await db.collection('public').doc('global-movies').set({
+                    items: cleanedMovies,
+                    lastUpdated: Date.now(),
+                    expiresAt: Date.now() + CACHE_VALIDITY.TOP_10,
+                    cacheType: 'global-movies',
+                });
+
+                updates.push(`global-movies (${enrichedMovies.length} items)`);
+                console.log(`[Cron] ✅ Updated global-movies`);
+            }
+
+            // Series
+            if (series?.length) {
+                const enrichedSeries: RadarItem[] = [];
+                for (const item of series.slice(0, 10)) {
+                    const enriched = await enrichWithTMDB(item.tmdb_id, 'tv');
+                    if (enriched) enrichedSeries.push(enriched);
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+
+                const cleanedSeries = enrichedSeries.map(item => removeUndefined(item));
+                await db.collection('public').doc('global-series').set({
+                    items: cleanedSeries,
+                    lastUpdated: Date.now(),
+                    expiresAt: Date.now() + CACHE_VALIDITY.TOP_10,
+                    cacheType: 'global-series',
+                });
+
+                updates.push(`global-series (${enrichedSeries.length} items)`);
+                console.log(`[Cron] ✅ Updated global-series`);
+            }
+        }
+
+        return updates;
+    } catch (error) {
+        console.error('[Cron] Error updating global:', error);
         throw error;
     }
 }

@@ -1,18 +1,15 @@
 import { NextResponse } from 'next/server';
-import { getCacheStaleness, needsUpdate, updateTop10Cache, updateTMDBCarousels } from '@/lib/services/cronUpdateService';
+import { getCacheStaleness, updateSingleService, updateGlobalCache, updateTMDBCarousels, StreamingService } from '@/lib/services/cronUpdateService';
 
 export const dynamic = 'force-dynamic';
-export const maxDuration = 300; // 5 minutes max execution (Vercel Pro limit)
+export const maxDuration = 60;
 
 export async function GET(request: Request) {
     const startTime = Date.now();
 
-    // Check authorization - accept Vercel Cron or manual with token
+    // Check authorization
     const authHeader = request.headers.get('authorization');
-    const userAgent = request.headers.get('user-agent') || '';
-    const isVercelCron = userAgent.includes('vercel-cron');
-
-    if (!isVercelCron && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -23,74 +20,71 @@ export async function GET(request: Request) {
         const updates: string[] = [];
         const errors: string[] = [];
 
-        // 1. Check staleness
+        // 1. Check staleness and get the MOST stale item
         console.log(`[Cron ${updateId}] Checking cache staleness...`);
         const staleness = await getCacheStaleness();
 
-        const needsTop10Update = needsUpdate(staleness, ['top10', 'global']);
-        const needsCarouselUpdate = needsUpdate(staleness, ['upcoming', 'now-playing', 'popular', 'on-the-air', 'trending']);
+        // Pegar apenas o MAIS desatualizado com prioridade > 0
+        const stalest = staleness.find(s => s.priority > 0);
 
-        console.log(`[Cron ${updateId}] Staleness:`, {
-            needsTop10Update,
-            needsCarouselUpdate,
-            stalestCache: staleness[0],
-        });
-
-        // 2. Update Top 10 if needed
-        if (needsTop10Update) {
-            try {
-                console.log(`[Cron ${updateId}] 📊 Updating Top 10 caches...`);
-                const top10Updates = await updateTop10Cache();
-                updates.push(...top10Updates);
-            } catch (error) {
-                console.error(`[Cron ${updateId}] ❌ Top 10 update failed:`, error);
-                errors.push(`Top 10: ${error}`);
-            }
-        } else {
-            console.log(`[Cron ${updateId}] ⏭️ Skipping Top 10 (fresh)`);
-            updates.push('Top 10: skipped (fresh)');
+        if (!stalest) {
+            console.log(`[Cron ${updateId}] ✅ All caches are fresh!`);
+            return NextResponse.json({
+                success: true,
+                updateId,
+                updates: ['All caches fresh'],
+                duration: `${((Date.now() - startTime) / 1000).toFixed(1)}s`,
+                timestamp: new Date().toISOString(),
+            });
         }
 
-        // 3. Update TMDB carousels if needed
-        if (needsCarouselUpdate) {
-            try {
-                console.log(`[Cron ${updateId}] 🎬 Updating TMDB carousels...`);
-                const carouselUpdates = await updateTMDBCarousels();
-                updates.push(...carouselUpdates);
-            } catch (error) {
-                console.error(`[Cron ${updateId}] ❌ TMDB carousel failed:`, error);
-                errors.push(`TMDB: ${error}`);
-            }
-        } else {
-            console.log(`[Cron ${updateId}] ⏭️ Skipping TMDB carousels (fresh)`);
-            updates.push('TMDB carousels: skipped (fresh)');
-        }
+        console.log(`[Cron ${updateId}] Processing: ${stalest.type} (age: ${(stalest.age / 1000 / 60).toFixed(0)}min)`);
 
-        // 4. Highlights
-        if (needsTop10Update || needsCarouselUpdate) {
-            console.log(`[Cron ${updateId}] 💡 Highlights marked for regeneration`);
-            updates.push('Highlights: marked for regeneration');
+        // 2. Processar baseado no tipo
+        try {
+            // Top 10 services
+            if (stalest.type.startsWith('top10-')) {
+                const service = stalest.type.replace('top10-', '') as StreamingService;
+                const result = await updateSingleService(service);
+                updates.push(...result);
+            }
+            // Global
+            else if (stalest.type.startsWith('global')) {
+                const result = await updateGlobalCache();
+                updates.push(...result);
+            }
+            // TMDB carousels
+            else if (['upcoming', 'now-playing', 'popular-movies', 'on-the-air', 'popular-tv', 'trending'].includes(stalest.type)) {
+                const result = await updateTMDBCarousels();
+                updates.push(...result);
+            }
+
+        } catch (error) {
+            console.error(`[Cron ${updateId}] ❌ Update failed:`, error);
+            errors.push(`${stalest.type}: ${error}`);
         }
 
         const duration = ((Date.now() - startTime) / 1000).toFixed(1);
         console.log(`[Cron ${updateId}] ✅ Complete in ${duration}s`);
         console.log(`[Cron ${updateId}] Updates:`, updates);
-        if (errors.length > 0) {
-            console.log(`[Cron ${updateId}] Errors:`, errors);
-        }
+
+        // Próximo na fila
+        const nextStale = staleness.filter(s => s.priority > 0).slice(1, 2);
 
         return NextResponse.json({
             success: true,
             updateId,
+            processed: stalest.type,
             updates,
             errors: errors.length > 0 ? errors : undefined,
+            nextInQueue: nextStale.length > 0 ? nextStale[0].type : 'none',
             duration: `${duration}s`,
             timestamp: new Date().toISOString(),
         });
 
     } catch (error) {
         const duration = ((Date.now() - startTime) / 1000).toFixed(1);
-        console.error(`[Cron ${updateId}] ❌ Fatal error after ${duration}s:`, error);
+        console.error(`[Cron ${updateId}] ❌ Fatal error:`, error);
 
         return NextResponse.json(
             {

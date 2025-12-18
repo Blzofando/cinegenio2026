@@ -535,10 +535,9 @@ export async function updateSingleService(service: StreamingService): Promise<st
         const enrichedItems: RadarItem[] = [];
 
         for (const item of items.slice(0, 10)) {
-            // API retorna 'overall' no type, precisamos detectar
-            // Usar heurística: séries geralmente têm IDs menores no TMDB
-            const mediaType = await detectMediaType(item.tmdb_id);
-            console.log(`[Cron] Item "${item.title}" (${item.tmdb_id}) - detected: "${mediaType}"`);
+            // Usar tipo direto da API (já vem correto)
+            const mediaType = item.type === 'movie' ? 'movie' : 'tv';
+            console.log(`[Cron] Item "${item.title}" (${item.tmdb_id}) - type: "${item.type}" -> "${mediaType}"`);
             const enriched = await enrichWithTMDB(item.tmdb_id, mediaType, providerMap[service]);
 
             if (enriched) {

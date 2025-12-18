@@ -2,42 +2,24 @@ import { NextResponse } from 'next/server';
 import { getCacheStaleness, needsUpdate, updateTop10Cache, updateTMDBCarousels } from '@/lib/services/cronUpdateService';
 
 export const dynamic = 'force-dynamic';
-export const maxDuration = 300; // 5 minutes max execution
+export const maxDuration = 300; // 5 minutes max execution (Vercel Pro limit)
 
 export async function GET(request: Request) {
-    // Check authorization
+    const startTime = Date.now();
+
+    // Check authorization - accept Vercel Cron or manual with token
     const authHeader = request.headers.get('authorization');
-    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    const userAgent = request.headers.get('user-agent') || '';
+    const isVercelCron = userAgent.includes('vercel-cron');
+
+    if (!isVercelCron && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // 🔥 FIRE-AND-FORGET: Responde imediatamente e processa em background
     const updateId = `update-${Date.now()}`;
-    console.log(`[Cron] 🚀 Update ${updateId} triggered - processing in background...`);
-
-    // Inicia processamento em background (sem await)
-    processUpdatesInBackground(updateId).catch(error => {
-        console.error(`[Cron] ❌ Background update ${updateId} failed:`, error);
-    });
-
-    // Retorna imediatamente
-    return NextResponse.json({
-        success: true,
-        message: 'Update started in background',
-        updateId,
-        timestamp: new Date().toISOString(),
-    });
-}
-
-/**
- * Processa atualizações em background
- */
-async function processUpdatesInBackground(updateId: string) {
-    const startTime = Date.now();
+    console.log(`[Cron ${updateId}] 🚀 Starting update process...`);
 
     try {
-        console.log(`[Cron ${updateId}] Starting update process...`);
-
         const updates: string[] = [];
         const errors: string[] = [];
 
@@ -46,7 +28,7 @@ async function processUpdatesInBackground(updateId: string) {
         const staleness = await getCacheStaleness();
 
         const needsTop10Update = needsUpdate(staleness, ['top10', 'global']);
-        const needsCarouselUpdate = needsUpdate(staleness, ['upcoming', 'now-playing', 'popular']);
+        const needsCarouselUpdate = needsUpdate(staleness, ['upcoming', 'now-playing', 'popular', 'on-the-air', 'trending']);
 
         console.log(`[Cron ${updateId}] Staleness:`, {
             needsTop10Update,
@@ -85,7 +67,7 @@ async function processUpdatesInBackground(updateId: string) {
         }
 
         // 4. Highlights
-        if (needsTop10Update) {
+        if (needsTop10Update || needsCarouselUpdate) {
             console.log(`[Cron ${updateId}] 💡 Highlights marked for regeneration`);
             updates.push('Highlights: marked for regeneration');
         }
@@ -97,8 +79,28 @@ async function processUpdatesInBackground(updateId: string) {
             console.log(`[Cron ${updateId}] Errors:`, errors);
         }
 
+        return NextResponse.json({
+            success: true,
+            updateId,
+            updates,
+            errors: errors.length > 0 ? errors : undefined,
+            duration: `${duration}s`,
+            timestamp: new Date().toISOString(),
+        });
+
     } catch (error) {
         const duration = ((Date.now() - startTime) / 1000).toFixed(1);
         console.error(`[Cron ${updateId}] ❌ Fatal error after ${duration}s:`, error);
+
+        return NextResponse.json(
+            {
+                success: false,
+                updateId,
+                error: error instanceof Error ? error.message : 'Unknown error',
+                duration: `${duration}s`,
+                timestamp: new Date().toISOString(),
+            },
+            { status: 500 }
+        );
     }
 }

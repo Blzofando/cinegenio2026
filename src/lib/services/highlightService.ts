@@ -173,10 +173,9 @@ async function collectMoviesHighlights(): Promise<HighlightItem[]> {
 
     const sources = [
         { id: 'global-movies', name: 'Top 10 Global' },
+        { endpoint: 'firebase:calendar-movies', name: 'Em Breve' }, // FlixPatrol Calendar (only movies)
         { id: 'popular-movies', name: 'Populares' },
-        { endpoint: '/movie/top_rated', name: 'Mais Bem Avaliados' },
-        { id: 'now-playing', name: 'Nos Cinemas' },
-        { endpoint: '/movie/upcoming', name: 'Em Breve' },
+        { endpoint: '/movie/now_playing', name: 'Nos Cinemas' },
     ];
 
     try {
@@ -211,32 +210,64 @@ async function collectMoviesHighlights(): Promise<HighlightItem[]> {
                     }
                 }
             } else if ('endpoint' in source) {
-                // Fetch from TMDB API
-                const response = await fetch(
-                    `https://api.themoviedb.org/3${source.endpoint}?api_key=${process.env.NEXT_PUBLIC_TMDB_API_KEY}&language=pt-BR&page=1`
-                );
-                const data = await response.json();
-                const items = data.results || [];
+                const endpoint = source.endpoint as string;
 
-                for (const item of items) {
-                    if (seenIds.has(item.id)) continue;
-                    if (highlights.length >= 5) break;
+                // Check if it's a Firebase reference
+                if (endpoint.startsWith('firebase:')) {
+                    const firebaseId = endpoint.replace('firebase:', '');
+                    const docRef = doc(db, 'public', firebaseId);
+                    const docSnap = await getDoc(docRef);
 
-                    seenIds.add(item.id);
-                    highlights.push({
-                        id: item.id,
-                        tmdbMediaType: 'movie',
-                        title: item.title,
-                        overview: item.overview || '',
-                        backdropUrl: item.backdrop_path ? `https://image.tmdb.org/t/p/original${item.backdrop_path}` : '',
-                        logoUrl: null,
-                        voteAverage: item.vote_average || 0,
-                        releaseDate: item.release_date || '',
-                        genres: [], // Will be filled from full details if needed
-                        source: source.name,
-                    });
-                    console.log(`[Highlights] ✅ Added "${item.title}" from ${source.name}`);
-                    break;
+                    if (docSnap.exists()) {
+                        const data = docSnap.data();
+                        const items = data.items || [];
+
+                        for (const item of items) {
+                            if (seenIds.has(item.id)) continue;
+                            if (highlights.length >= 5) break;
+
+                            // Fetch complete data from TMDB
+                            const tmdbData = await fetchTMDBDetails(item.id, item.tmdbMediaType || 'movie');
+                            if (tmdbData) {
+                                seenIds.add(tmdbData.id);
+                                highlights.push({
+                                    ...tmdbData,
+                                    logoUrl: null,
+                                    source: source.name,
+                                });
+                                console.log(`[Highlights] ✅ Added "${tmdbData.title}" from ${source.name}`);
+                                break;
+                            }
+                        }
+                    }
+                } else {
+                    // Fetch from TMDB API
+                    const response = await fetch(
+                        `https://api.themoviedb.org/3${endpoint}?api_key=${process.env.NEXT_PUBLIC_TMDB_API_KEY}&language=pt-BR&page=1`
+                    );
+                    const data = await response.json();
+                    const items = data.results || [];
+
+                    for (const item of items) {
+                        if (seenIds.has(item.id)) continue;
+                        if (highlights.length >= 5) break;
+
+                        seenIds.add(item.id);
+                        highlights.push({
+                            id: item.id,
+                            tmdbMediaType: 'movie',
+                            title: item.title,
+                            overview: item.overview || '',
+                            backdropUrl: item.backdrop_path ? `https://image.tmdb.org/t/p/original${item.backdrop_path}` : '',
+                            logoUrl: null,
+                            voteAverage: item.vote_average || 0,
+                            releaseDate: item.release_date || '',
+                            genres: [], // Will be filled from full details if needed
+                            source: source.name,
+                        });
+                        console.log(`[Highlights] ✅ Added "${item.title}" from ${source.name}`);
+                        break;
+                    }
                 }
             }
         }
@@ -262,6 +293,7 @@ async function collectTvHighlights(): Promise<HighlightItem[]> {
         { id: 'popular-tv', name: 'Populares' },
         { endpoint: '/tv/top_rated', name: 'Mais Bem Avaliadas' },
         { endpoint: '/tv/on_the_air', name: 'No Ar' },
+        { endpoint: 'firebase:calendar-tv', name: 'Em Breve' }, // FlixPatrol Calendar
     ];
 
     try {

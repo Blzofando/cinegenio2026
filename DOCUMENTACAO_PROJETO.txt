@@ -1,0 +1,907 @@
+================================================================================
+                    CINEGENIO - DOCUMENTAÇÃO DO PROJETO
+================================================================================
+
+VISÃO GERAL
+-----------
+CineGênio é uma plataforma web de entretenimento pessoal que combina recursos de 
+streaming, recomendações personalizadas e acompanhamento de filmes e séries. O 
+projeto utiliza tecnologias modernas para oferecer uma experiência rica e 
+interativa aos usuários.
+
+================================================================================
+TECNOLOGIAS PRINCIPAIS
+================================================================================
+
+FRAMEWORK E LINGUAGEM
+---------------------
+- Next.js 15.5.9 (React 19.1.0)
+- TypeScript 5
+- Node.js com npm
+- Turbopack (modo de desenvolvimento e build)
+
+ESTILIZAÇÃO
+-----------
+- Tailwind CSS 4.1.12
+- Framer Motion 12.23.12 (animações)
+- Lucide React (ícones)
+- clsx e tailwind-merge (utilitários CSS)
+
+BANCO DE DADOS E AUTENTICAÇÃO
+------------------------------
+- Firebase 12.1.0 (client-side)
+- Firebase Admin 13.4.0 (server-side)
+- Firebase Authentication (email/senha)
+- Cloud Firestore (banco de dados NoSQL)
+
+APIs EXTERNAS
+-------------
+- TMDB API (The Movie Database) - Metadados de filmes e séries
+- FlixPatrol API - Rankings de streaming services
+- Google Generative AI / OpenAI - Chat AI e recomendações
+
+BIBLIOTECAS ADICIONAIS
+----------------------
+- Embla Carousel React - Carrosséis de conteúdo
+- Lottie React - Animações
+- React Confetti - Efeitos visuais
+- React Infinite Scroll - Scroll infinito
+- React TSParticles - Efeitos de partículas
+
+================================================================================
+ESTRUTURA DO PROJETO
+================================================================================
+
+DIRETÓRIOS PRINCIPAIS
+----------------------
+
+/src
+├── /app                    # Rotas Next.js (App Router)
+│   ├── /(auth)            # Páginas de autenticação (login, registro)
+│   ├── /ai                # Chat AI
+│   ├── /api               # API Routes
+│   │   ├── /cron/update   # Endpoint de atualização automática
+│   │   └── /populate-radar # Endpoint de população inicial
+│   ├── /dashboard         # Dashboard principal
+│   │   ├── /abandoned     # Filmes/séries abandonados
+│   │   ├── /challenge     # Desafios de visualização
+│   │   ├── /chat          # Chat AI integrado
+│   │   ├── /classic       # Clássicos
+│   │   ├── /collection    # Coleções personalizadas
+│   │   ├── /duel          # Duelos entre títulos
+│   │   ├── /predict       # Previsões
+│   │   ├── /radar         # Radar de lançamentos
+│   │   ├── /random        # Seleção aleatória
+│   │   ├── /stats         # Estatísticas pessoais
+│   │   ├── /suggestion    # Sugestões personalizadas
+│   │   ├── /watchlist     # Lista de desejos
+│   │   └── /weekly-relevants # Destaques semanais
+│   ├── /movie             # Página de detalhes de filme
+│   ├── /movies            # Listagem de filmes
+│   └── /tv                # Páginas de séries
+│
+├── /components            # Componentes React
+│   ├── /auth             # Componentes de autenticação
+│   ├── /chat             # Componentes do chat
+│   ├── /collection       # Componentes de coleções
+│   ├── /extras           # Componentes extras
+│   ├── /hero             # Hero carousel
+│   ├── /particles        # Efeitos de partículas
+│   ├── /shared           # Componentes compartilhados
+│   │   ├── AddModal.tsx
+│   │   ├── CategoryCarousel.tsx
+│   │   ├── CombinedPlayButton.tsx
+│   │   ├── ContinueWatchingCarousel.tsx
+│   │   ├── DashboardHeader.tsx
+│   │   ├── DetailsModal.tsx
+│   │   ├── EnhancedDetailsModal.tsx
+│   │   ├── EpisodeSelector.tsx
+│   │   ├── HeroCarousel.tsx
+│   │   ├── MobileBottomNav.tsx
+│   │   ├── MovieCarousel.tsx
+│   │   ├── RatingModal.tsx
+│   │   ├── SearchBar.tsx
+│   │   ├── StatusButton.tsx
+│   │   ├── TitleSelector.tsx
+│   │   ├── TopTenCarousel.tsx
+│   │   └── VideoPlayerModal.tsx
+│   ├── /ui               # Componentes UI base
+│   └── /watchlist        # Componentes da watchlist
+│
+├── /contexts             # React Contexts
+│   └── AuthContext.tsx   # Contexto de autenticação
+│
+├── /hooks                # Custom React Hooks
+│
+├── /lib                  # Bibliotecas e utilitários
+│   ├── /firebase         # Configuração Firebase
+│   │   ├── admin.ts      # Firebase Admin SDK
+│   │   └── client.ts     # Firebase Client SDK
+│   ├── /services         # Serviços de negócio
+│   │   ├── cronUpdateService.ts      # Atualização automática
+│   │   ├── flixpatrolService.ts      # Integração FlixPatrol
+│   │   ├── highlightService.ts       # Destaques
+│   │   └── seriesMetadataCache.ts    # Cache de metadados
+│   ├── aiService.ts      # Serviço de IA
+│   ├── challenge.ts      # Lógica de desafios
+│   ├── droppedService.ts # Títulos abandonados
+│   ├── dualEpisodeService.ts # Episódios duplos
+│   ├── firestore.ts      # Utilitários Firestore
+│   ├── gemini.ts         # Integração Google AI
+│   ├── nowWatchingService.ts # Assistindo agora
+│   ├── openai.ts         # Integração OpenAI
+│   ├── radar.ts          # Radar de lançamentos
+│   ├── recommendations.ts # Recomendações
+│   ├── resumeService.ts  # Retomada de visualização
+│   ├── tmdb.ts           # Integração TMDB
+│   ├── users.ts          # Gerenciamento de usuários
+│   ├── videoProgressService.ts # Progresso de vídeo
+│   ├── watchedService.ts # Títulos assistidos
+│   └── weeklyRelevants.ts # Relevantes semanais
+│
+├── /types                # Definições TypeScript
+│
+└── /config               # Arquivos de configuração
+
+/public                   # Arquivos estáticos
+├── /images              # Imagens
+└── /manifest.json       # PWA manifest
+
+================================================================================
+FUNCIONALIDADES PRINCIPAIS
+================================================================================
+
+1. AUTENTICAÇÃO E PERFIL DE USUÁRIO
+------------------------------------
+- Registro com email e senha (validação forte de senha)
+- Login com Firebase Authentication
+- Perfil de usuário armazenado no Firestore
+- Verificação de email
+- Gerenciamento de sessão
+
+Arquivos principais:
+- src/contexts/AuthContext.tsx
+- src/lib/users.ts
+- src/app/(auth)/login/page.tsx
+- src/app/(auth)/register/page.tsx
+
+2. DASHBOARD PRINCIPAL
+-----------------------
+O dashboard é o coração da aplicação, apresentando:
+
+a) Hero Carousel
+   - Carrossel principal com destaques
+   - Backdrop em 16:9 com gradiente
+   - Informações do título (nome, ano, sinopse, avaliação)
+   - Botões de ação (Play, Adicionar, Detalhes)
+
+b) Continue Watching (Continuar Assistindo)
+   - Exibe filmes e séries em andamento
+   - Mostra progresso de visualização
+   - Sistema de retomada inteligente
+   - Estratégia de episódio duplo para séries
+
+c) Top 10 Streaming Services
+   - Netflix Top 10
+   - Prime Video Top 10
+   - Disney+ Top 10
+   - HBO Max Top 10
+   - Apple TV+ Top 10
+   - Dados atualizados via FlixPatrol API
+   - Cache no Firebase (30 minutos)
+
+d) Tendências e Lançamentos
+   - Tendências da semana (TMDB)
+   - Filmes nos cinemas
+   - Próximos lançamentos
+
+Arquivos principais:
+- src/app/dashboard/page.tsx
+- src/components/shared/HeroCarousel.tsx
+- src/components/shared/TopTenCarousel.tsx
+- src/components/shared/ContinueWatchingCarousel.tsx
+
+3. RADAR DE LANÇAMENTOS
+------------------------
+Sistema de acompanhamento de lançamentos futuros:
+- Filmes em breve nos cinemas
+- Séries com novos episódios
+- Calendário de lançamentos
+- Notificações personalizadas
+
+Arquivos principais:
+- src/app/dashboard/radar/page.tsx
+- src/lib/radar.ts
+
+4. WATCHLIST (LISTA DE DESEJOS)
+--------------------------------
+- Adicionar filmes e séries para assistir depois
+- Organização por categorias
+- Filtros e ordenação
+- Sincronização com Firebase
+
+Arquivos principais:
+- src/app/dashboard/watchlist/page.tsx
+- src/components/watchlist/
+
+5. SISTEMA DE AVALIAÇÃO E STATUS
+---------------------------------
+Para cada título, o usuário pode:
+- Marcar como "Assistindo", "Assistido", "Quero Assistir", "Abandonado"
+- Dar nota de 0 a 10
+- Adicionar comentários pessoais
+- Marcar como favorito
+
+Arquivos principais:
+- src/components/shared/StatusButton.tsx
+- src/components/shared/RatingModal.tsx
+- src/lib/watchedService.ts
+- src/lib/droppedService.ts
+
+6. PLAYER DE VÍDEO
+-------------------
+- Player integrado para filmes e séries
+- Controles personalizados
+- Salvamento automático de progresso
+- Seletor de episódios para séries
+- Detecção de 90% para marcar como assistido
+
+Arquivos principais:
+- src/components/shared/VideoPlayerModal.tsx
+- src/components/shared/EpisodeSelector.tsx
+- src/lib/videoProgressService.ts
+- src/lib/resumeService.ts
+
+7. CHAT AI E RECOMENDAÇÕES
+---------------------------
+Sistema de chat inteligente com IA:
+- Recomendações personalizadas baseadas em histórico
+- Conversação natural sobre filmes e séries
+- Integração com Google Gemini e OpenAI
+- Contexto do usuário (gêneros favoritos, títulos assistidos)
+
+Arquivos principais:
+- src/app/ai/page.tsx
+- src/app/dashboard/chat/page.tsx
+- src/lib/gemini.ts
+- src/lib/openai.ts
+- src/lib/aiService.ts
+- src/lib/recommendations.ts
+
+8. DESAFIOS E GAMIFICAÇÃO
+--------------------------
+- Desafios de visualização (maratonas, gêneros específicos)
+- Sistema de pontuação
+- Conquistas e badges
+- Duelos entre títulos
+
+Arquivos principais:
+- src/app/dashboard/challenge/page.tsx
+- src/app/dashboard/duel/page.tsx
+- src/lib/challenge.ts
+
+9. ESTATÍSTICAS PESSOAIS
+-------------------------
+- Total de filmes e séries assistidos
+- Tempo total de visualização
+- Gêneros favoritos
+- Gráficos e visualizações
+- Histórico de atividades
+
+Arquivos principais:
+- src/app/dashboard/stats/page.tsx
+
+10. BUSCA AVANÇADA
+-------------------
+- Busca em tempo real
+- Resultados de filmes e séries
+- Filtros por tipo, ano, gênero
+- Integração com TMDB
+
+Arquivos principais:
+- src/components/shared/SearchBar.tsx
+- src/lib/tmdb.ts
+
+================================================================================
+SISTEMA DE CACHE E ATUALIZAÇÃO AUTOMÁTICA
+================================================================================
+
+ESTRATÉGIA DE CACHE
+-------------------
+O projeto utiliza um sistema de cache em três camadas:
+
+1. Memória (in-memory cache)
+   - Cache temporário durante a sessão
+   - Mais rápido, mas volátil
+
+2. Firebase Firestore (collection 'public')
+   - Cache persistente compartilhado
+   - Documentos com expiração (expiresAt)
+   - Tipos de cache:
+     * top10-netflix, top10-prime, top10-disney, top10-hbo, top10-apple
+     * global-movies, global-series
+     * trending, now-playing, popular-movies, popular-tv, on-the-air, upcoming
+
+3. API Externa (TMDB, FlixPatrol)
+   - Fonte de dados primária
+   - Acessada apenas quando cache expira
+
+VALIDADE DO CACHE
+------------------
+- Top 10 Streamings: 30 minutos
+- Carrosséis TMDB: 1 hora
+- Calendário: 3 horas (futuro)
+
+CRON JOB DE ATUALIZAÇÃO
+------------------------
+Endpoint: /api/cron/update
+
+Funcionalidades:
+1. Verifica staleness (antiguidade) de todos os caches
+2. Prioriza atualizações:
+   - Prioridade 1: Top 10 streamings (mais crítico)
+   - Prioridade 2: Carrosséis TMDB
+3. Atualiza apenas caches expirados
+4. Enriquece dados com TMDB (posters, sinopses, avaliações)
+5. Filtra temporadas iniciadas para séries
+
+Processo de atualização:
+1. Busca dados da FlixPatrol API (format=id para leveza)
+2. Para cada item, busca detalhes completos no TMDB
+3. Filtra temporadas de séries (remove temporadas futuras)
+4. Salva no Firebase com timestamp e expiração
+5. Retorna log de atualizações
+
+Arquivos principais:
+- src/app/api/cron/update/route.ts
+- src/lib/services/cronUpdateService.ts
+- src/lib/services/flixpatrolService.ts
+
+POPULAÇÃO INICIAL
+-----------------
+Endpoint: /api/populate-radar
+
+Executado automaticamente quando:
+- Usuário acessa o dashboard pela primeira vez
+- Caches não existem no Firebase
+
+Popula:
+- Trending (tendências)
+- Now Playing (nos cinemas)
+- Popular Movies/TV
+- On The Air (séries no ar)
+- Upcoming (próximos lançamentos)
+
+================================================================================
+INTEGRAÇÃO COM APIs EXTERNAS
+================================================================================
+
+1. TMDB (THE MOVIE DATABASE)
+-----------------------------
+URL Base: https://api.themoviedb.org/3
+
+Endpoints utilizados:
+- /search/movie - Busca de filmes
+- /search/tv - Busca de séries
+- /search/multi - Busca geral
+- /movie/{id} - Detalhes de filme
+- /tv/{id} - Detalhes de série
+- /movie/upcoming - Próximos lançamentos
+- /movie/now_playing - Nos cinemas
+- /movie/popular - Filmes populares
+- /tv/on_the_air - Séries no ar
+- /tv/popular - Séries populares
+- /trending/all/week - Tendências da semana
+- /discover/movie - Descobrir filmes
+- /discover/tv - Descobrir séries
+
+Recursos obtidos:
+- Metadados (título, sinopse, data de lançamento)
+- Imagens (posters, backdrops)
+- Avaliações e popularidade
+- Gêneros
+- Elenco e equipe
+- Provedores de streaming (watch providers)
+- Temporadas e episódios (séries)
+
+Rate Limiting:
+- Fila de requisições com delay de 250ms entre chamadas
+- Evita bloqueio por excesso de requisições
+
+Arquivo principal:
+- src/lib/tmdb.ts
+
+2. FLIXPATROL API
+-----------------
+URL Base: https://top-10-streamings.onrender.com
+
+Endpoints utilizados:
+- /api/quick/overall?format=id - Top 10 de todos os streamings (IDs)
+- /api/quick/overall - Top 10 completo com dados
+- /api/quick/calendar/movies - Calendário de filmes
+- /api/quick/calendar/tv-shows - Calendário de séries
+- /api/quick/calendar/overall - Calendário geral
+- /api/firebase/history/{service}/{type}/{date} - Dados históricos
+
+Autenticação:
+- Header: X-API-Key
+- Chave armazenada em variável de ambiente
+
+Dados obtidos:
+- Rankings de streaming services (Netflix, Prime, Disney+, HBO, Apple TV+)
+- Índice de popularidade
+- Top 10 global (filmes e séries)
+- Calendário de lançamentos
+- Histórico de rankings
+
+Arquivo principal:
+- src/lib/services/flixpatrolService.ts
+
+3. GOOGLE GENERATIVE AI (GEMINI)
+---------------------------------
+Modelo: gemini-1.5-flash
+
+Uso:
+- Chat AI conversacional
+- Recomendações personalizadas
+- Análise de preferências do usuário
+
+Arquivo principal:
+- src/lib/gemini.ts
+
+4. OPENAI
+---------
+Modelo: gpt-4o-mini
+
+Uso:
+- Alternativa ao Gemini
+- Recomendações de conteúdo
+- Análise de sentimento
+
+Arquivo principal:
+- src/lib/openai.ts
+
+================================================================================
+ESTRUTURA DO FIREBASE
+================================================================================
+
+COLLECTIONS PRINCIPAIS
+-----------------------
+
+1. users/{userId}
+   - name: string
+   - username: string
+   - email: string
+   - createdAt: timestamp
+   - photoURL?: string
+
+2. users/{userId}/nowWatching/{titleId}
+   - id: number (TMDB ID)
+   - type: 'movie' | 'tv'
+   - title: string
+   - posterUrl: string
+   - timestamp: number (progresso em segundos)
+   - duration: number (duração total)
+   - viewed: boolean
+   - lastWatched: timestamp
+   - episodeId?: string (para séries)
+   - seasonNumber?: number
+   - episodeNumber?: number
+
+3. users/{userId}/nowWatching/episodes/{episodeId}
+   - Mesma estrutura, para episódios de séries
+
+4. users/{userId}/watched/{titleId}
+   - id: number
+   - type: 'movie' | 'tv'
+   - title: string
+   - posterUrl: string
+   - rating?: number (0-10)
+   - comment?: string
+   - watchedAt: timestamp
+   - isFavorite?: boolean
+
+5. users/{userId}/watchlist/{titleId}
+   - id: number
+   - type: 'movie' | 'tv'
+   - title: string
+   - posterUrl: string
+   - addedAt: timestamp
+   - priority?: 'high' | 'medium' | 'low'
+
+6. users/{userId}/dropped/{titleId}
+   - id: number
+   - type: 'movie' | 'tv'
+   - title: string
+   - posterUrl: string
+   - reason?: string
+   - droppedAt: timestamp
+
+7. users/{userId}/radar/{titleId}
+   - Títulos no radar de lançamentos
+   - Estrutura RadarItem completa
+
+8. users/{userId}/collections/{collectionId}
+   - name: string
+   - description: string
+   - items: array de titleIds
+   - createdAt: timestamp
+
+9. public/{cacheType}
+   - items: array de RadarItem
+   - lastUpdated: timestamp
+   - expiresAt: timestamp
+   - cacheType: string
+
+10. public/highlights
+    - items: array de HighlightItem
+    - lastUpdated: timestamp
+
+================================================================================
+TIPOS E INTERFACES PRINCIPAIS
+================================================================================
+
+RadarItem
+---------
+interface RadarItem {
+    id: number;                    // TMDB ID
+    tmdbMediaType: 'movie' | 'tv';
+    title: string;
+    releaseDate: string;
+    type: 'movie' | 'tv';
+    listType: string;              // 'upcoming', 'trending', 'top_rated_provider', etc.
+    posterUrl?: string;
+    backdropUrl?: string;
+    overview?: string;
+    voteAverage?: number;
+    voteCount?: number;
+    popularity?: number;
+    originalLanguage?: string;
+    originalTitle?: string;
+    adult?: boolean;
+    genres?: string[];
+    runtime?: number;              // Apenas filmes
+    numberOfSeasons?: number;      // Apenas séries
+    numberOfEpisodes?: number;     // Apenas séries
+    providerId?: number;           // ID do streaming service
+    nextEpisodeToAir?: {
+        air_date: string;
+        episode_number: number;
+        season_number: number;
+    };
+}
+
+TMDbSearchResult
+----------------
+interface TMDbSearchResult {
+    id: number;
+    title?: string;                // Filmes
+    name?: string;                 // Séries
+    poster_path?: string;
+    backdrop_path?: string;
+    overview?: string;
+    release_date?: string;         // Filmes
+    first_air_date?: string;       // Séries
+    vote_average: number;
+    popularity: number;
+    media_type: 'movie' | 'tv';
+    genre_ids?: number[];
+}
+
+WatchProviders
+--------------
+interface WatchProviders {
+    link: string;
+    flatrate?: WatchProvider[];
+}
+
+interface WatchProvider {
+    provider_id: number;
+    provider_name: string;
+    logo_path: string;
+}
+
+================================================================================
+FLUXOS PRINCIPAIS
+================================================================================
+
+1. FLUXO DE AUTENTICAÇÃO
+-------------------------
+1. Usuário acessa a aplicação (/)
+2. AuthContext verifica estado de autenticação
+3. Se não autenticado, redireciona para /login
+4. Usuário faz login ou registro
+5. Firebase Authentication valida credenciais
+6. Perfil criado/atualizado no Firestore
+7. Redirecionamento para /dashboard
+
+2. FLUXO DE VISUALIZAÇÃO DE CONTEÚDO
+-------------------------------------
+1. Usuário navega pelo dashboard
+2. Clica em um título (filme ou série)
+3. EnhancedDetailsModal é aberto com detalhes
+4. Usuário pode:
+   a) Adicionar à watchlist
+   b) Marcar status (Assistindo, Assistido, etc.)
+   c) Dar nota e comentar
+   d) Iniciar reprodução
+5. Se iniciar reprodução:
+   a) VideoPlayerModal é aberto
+   b) Progresso é salvo automaticamente
+   c) Ao atingir 90%, marca como assistido
+   d) Para séries, sistema de episódio duplo
+
+3. FLUXO DE ATUALIZAÇÃO DE CACHE
+---------------------------------
+1. Cron job executa /api/cron/update periodicamente
+2. Sistema verifica staleness de todos os caches
+3. Identifica caches expirados
+4. Para cada cache expirado:
+   a) Busca dados da API externa
+   b) Enriquece com TMDB
+   c) Processa e limpa dados
+   d) Salva no Firebase
+5. Retorna log de atualizações
+
+4. FLUXO DE RECOMENDAÇÃO AI
+----------------------------
+1. Usuário acessa /dashboard/chat ou /ai
+2. Sistema carrega histórico de visualizações
+3. Usuário faz pergunta ou pede recomendação
+4. Sistema envia contexto para IA:
+   - Títulos assistidos
+   - Gêneros favoritos
+   - Avaliações
+5. IA processa e retorna recomendação
+6. Sistema busca detalhes no TMDB
+7. Exibe recomendações formatadas
+
+5. FLUXO DE CONTINUAR ASSISTINDO
+---------------------------------
+1. Dashboard carrega nowWatching do usuário
+2. Para cada título em andamento:
+   a) Verifica progresso
+   b) Calcula porcentagem assistida
+   c) Para séries, identifica próximo episódio
+3. Exibe em ContinueWatchingCarousel
+4. Ao clicar:
+   a) Abre player no timestamp salvo
+   b) Continua reprodução
+
+================================================================================
+VARIÁVEIS DE AMBIENTE
+================================================================================
+
+Arquivo: .env.local
+
+NEXT_PUBLIC_TMDB_API_KEY=<chave_tmdb>
+NEXT_PUBLIC_FLIXPATROL_API_KEY=<chave_flixpatrol>
+
+# Firebase Client
+NEXT_PUBLIC_FIREBASE_API_KEY=<firebase_api_key>
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=<firebase_auth_domain>
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=<firebase_project_id>
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=<firebase_storage_bucket>
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=<firebase_messaging_sender_id>
+NEXT_PUBLIC_FIREBASE_APP_ID=<firebase_app_id>
+
+# Firebase Admin (server-side)
+FIREBASE_PROJECT_ID=<firebase_project_id>
+FIREBASE_CLIENT_EMAIL=<firebase_client_email>
+FIREBASE_PRIVATE_KEY=<firebase_private_key>
+
+# AI Services
+NEXT_PUBLIC_GEMINI_API_KEY=<gemini_api_key>
+OPENAI_API_KEY=<openai_api_key>
+
+# Outras (opcionais)
+TMDB_API_KEY=<tmdb_api_key_server>
+FLIXPATROL_API_KEY=<flixpatrol_api_key_server>
+
+================================================================================
+COMANDOS PRINCIPAIS
+================================================================================
+
+DESENVOLVIMENTO
+---------------
+npm run dev              # Inicia servidor de desenvolvimento (porta 3000)
+                        # Com Turbopack para hot reload rápido
+
+BUILD E PRODUÇÃO
+----------------
+npm run build           # Cria build de produção
+npm run start           # Inicia servidor de produção
+
+LINTING
+-------
+npm run lint            # Executa ESLint
+
+INSTALAÇÃO
+----------
+npm install             # Instala todas as dependências
+
+================================================================================
+RECURSOS ESPECIAIS
+================================================================================
+
+1. PWA (PROGRESSIVE WEB APP)
+----------------------------
+- Manifest configurado (/public/manifest.json)
+- Instalável em dispositivos móveis
+- Ícones e splash screens
+- Modo standalone
+
+2. RESPONSIVIDADE
+-----------------
+- Design mobile-first
+- Breakpoints Tailwind
+- Menu inferior para mobile
+- Header adaptativo
+
+3. ANIMAÇÕES
+------------
+- Framer Motion para transições suaves
+- Lottie para animações complexas
+- Confetti para celebrações
+- Partículas decorativas
+
+4. ACESSIBILIDADE
+-----------------
+- Semântica HTML adequada
+- ARIA labels
+- Navegação por teclado
+- Contraste de cores
+
+5. PERFORMANCE
+--------------
+- Lazy loading de imagens
+- Code splitting automático (Next.js)
+- Cache em múltiplas camadas
+- Otimização de imagens (Next.js Image)
+- Turbopack para builds rápidos
+
+================================================================================
+SEGURANÇA
+================================================================================
+
+1. AUTENTICAÇÃO
+---------------
+- Firebase Authentication (seguro por padrão)
+- Validação de senha forte
+- Verificação de email
+- Sessões gerenciadas pelo Firebase
+
+2. AUTORIZAÇÃO
+--------------
+- Regras de segurança do Firestore
+- Dados do usuário isolados por UID
+- API routes protegidas
+
+3. VARIÁVEIS DE AMBIENTE
+------------------------
+- Chaves de API não expostas no código
+- .env.local no .gitignore
+- Separação client/server
+
+4. VALIDAÇÃO
+------------
+- Validação de inputs
+- Sanitização de dados
+- Tratamento de erros
+
+================================================================================
+DEPLOY
+================================================================================
+
+PLATAFORMA RECOMENDADA: VERCEL
+-------------------------------
+1. Conectar repositório Git
+2. Configurar variáveis de ambiente
+3. Deploy automático em cada push
+
+Arquivo de configuração: vercel.json
+
+OUTRAS OPÇÕES
+-------------
+- Netlify
+- AWS Amplify
+- Google Cloud Run
+- Render
+
+REQUISITOS
+----------
+- Node.js 20+
+- Variáveis de ambiente configuradas
+- Firebase projeto configurado
+- Chaves de API válidas
+
+================================================================================
+MANUTENÇÃO E MONITORAMENTO
+================================================================================
+
+1. LOGS
+-------
+- Console logs em desenvolvimento
+- Firebase Analytics (opcional)
+- Sentry para error tracking (opcional)
+
+2. ATUALIZAÇÕES
+---------------
+- Cron job automático para caches
+- Dependências npm (verificar periodicamente)
+- Versões do Next.js e React
+
+3. BACKUP
+---------
+- Firebase Firestore (backup automático)
+- Código versionado no Git
+
+================================================================================
+ROADMAP E MELHORIAS FUTURAS
+================================================================================
+
+1. FUNCIONALIDADES
+------------------
+- Sistema de amigos e compartilhamento
+- Reviews públicas
+- Listas colaborativas
+- Notificações push
+- Modo offline
+
+2. INTEGRAÇÕES
+--------------
+- Mais streaming services
+- Letterboxd
+- Trakt.tv
+- IMDb
+
+3. PERFORMANCE
+--------------
+- Service Workers
+- Cache mais agressivo
+- Otimização de imagens
+- Lazy loading de componentes
+
+4. UX/UI
+--------
+- Temas personalizáveis
+- Mais animações
+- Gestos touch
+- Atalhos de teclado
+
+================================================================================
+SUPORTE E DOCUMENTAÇÃO
+================================================================================
+
+DOCUMENTAÇÃO OFICIAL
+--------------------
+- Next.js: https://nextjs.org/docs
+- React: https://react.dev
+- Firebase: https://firebase.google.com/docs
+- TMDB API: https://developers.themoviedb.org/3
+- Tailwind CSS: https://tailwindcss.com/docs
+
+COMUNIDADE
+----------
+- Stack Overflow
+- GitHub Issues
+- Discord Next.js
+- Reddit r/nextjs
+
+================================================================================
+CONCLUSÃO
+================================================================================
+
+CineGênio é uma plataforma completa de entretenimento pessoal que combina:
+- Tecnologias modernas (Next.js 15, React 19, Firebase)
+- APIs poderosas (TMDB, FlixPatrol, AI)
+- UX rica e interativa
+- Sistema de cache inteligente
+- Gamificação e personalização
+
+O projeto está estruturado de forma modular e escalável, facilitando 
+manutenção e adição de novas funcionalidades.
+
+================================================================================
+FIM DA DOCUMENTAÇÃO
+================================================================================

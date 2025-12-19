@@ -9,6 +9,7 @@ import MovieCarousel from '@/components/shared/MovieCarousel';
 import DashboardHeader from '@/components/shared/DashboardHeader';
 import MobileBottomNav from '@/components/shared/MobileBottomNav';
 import ContinueWatchingCarousel from '@/components/shared/ContinueWatchingCarousel';
+import ComingSoonCarousel from '@/components/shared/ComingSoonCarousel';
 import HeroCarousel from '@/components/shared/HeroCarousel';
 import { getHighlights, HighlightItem } from '@/lib/services/highlightService';
 import HeroSkeleton from '@/components/shared/skeletons/HeroSkeleton';
@@ -121,6 +122,9 @@ export default function DashboardHome() {
                         color="gray"
                     />
                 </section>
+
+                {/* SEÇÃO: EM BREVE (Calendar) */}
+                <ComingSoonCarousel type="all" />
 
                 {/* SEÇÃO: TENDÊNCIAS & LANÇAMENTOS */}
                 {(trending.length > 0 || nowPlaying.length > 0) && (

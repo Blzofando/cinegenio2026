@@ -1,0 +1,6 @@
+<svg width="300" height="450" xmlns="http://www.w3.org/2000/svg">
+  <rect width="300" height="450" fill="#1f2937"/>
+  <circle cx="150" cy="200" r="40" fill="#374151" opacity="0.5"/>
+  <path d="M150 180 L150 220 M130 200 L170 200" stroke="#6b7280" stroke-width="4" stroke-linecap="round"/>
+  <text x="150" y="270" font-family="Arial, sans-serif" font-size="14" fill="#6b7280" text-anchor="middle">Sem imagem</text>
+</svg>

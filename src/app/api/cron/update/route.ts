@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getCacheStaleness, updateSingleService, updateGlobalCache, updateTMDBCarousels, StreamingService } from '@/lib/services/cronUpdateService';
+import { getCacheStaleness, updateSingleService, updateGlobalCache, updateTMDBCarousels, updateCalendarCache, StreamingService } from '@/lib/services/cronUpdateService';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -53,8 +53,13 @@ export async function GET(request: Request) {
                 const result = await updateGlobalCache();
                 updates.push(...result);
             }
+            // Calendar
+            else if (stalest.type.startsWith('calendar-')) {
+                const result = await updateCalendarCache();
+                updates.push(...result);
+            }
             // TMDB carousels
-            else if (['upcoming', 'now-playing', 'popular-movies', 'on-the-air', 'popular-tv', 'trending'].includes(stalest.type)) {
+            else if (['now-playing', 'popular-movies', 'on-the-air', 'popular-tv', 'trending'].includes(stalest.type)) {
                 const result = await updateTMDBCarousels();
                 updates.push(...result);
             }

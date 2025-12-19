@@ -7,6 +7,7 @@ import { RadarItem } from '@/types';
 import TopTenCarousel from '@/components/shared/TopTenCarousel';
 import CategoryCarousel from '@/components/shared/CategoryCarousel';
 import ContinueWatchingCarousel from '@/components/shared/ContinueWatchingCarousel';
+import ComingSoonCarousel from '@/components/shared/ComingSoonCarousel';
 import DashboardHeader from '@/components/shared/DashboardHeader';
 import MobileBottomNav from '@/components/shared/MobileBottomNav';
 import HeroCarousel from '@/components/shared/HeroCarousel';
@@ -91,6 +92,9 @@ export default function TVPage() {
                         color="gold"
                     />
                 </section>
+
+                {/* EM BREVE - Calendar TV Shows */}
+                <ComingSoonCarousel type="tv" categoryUrl="/tv/category/coming-soon" />
 
                 {/* Categorias */}
                 <section>

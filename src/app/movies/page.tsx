@@ -7,6 +7,7 @@ import { RadarItem } from '@/types';
 import TopTenCarousel from '@/components/shared/TopTenCarousel';
 import CategoryCarousel from '@/components/shared/CategoryCarousel';
 import ContinueWatchingCarousel from '@/components/shared/ContinueWatchingCarousel';
+import ComingSoonCarousel from '@/components/shared/ComingSoonCarousel';
 import DashboardHeader from '@/components/shared/DashboardHeader';
 import MobileBottomNav from '@/components/shared/MobileBottomNav';
 import HeroCarousel from '@/components/shared/HeroCarousel';
@@ -14,7 +15,6 @@ import { getHighlights, HighlightItem } from '@/lib/services/highlightService';
 import HeroSkeleton from '@/components/shared/skeletons/HeroSkeleton';
 
 export default function MoviesPage() {
-    const [upcomingMovies, setUpcomingMovies] = useState<RadarItem[]>([]);
     const [nowPlayingMovies, setNowPlayingMovies] = useState<RadarItem[]>([]);
     const [topRatedMovies, setTopRatedMovies] = useState<RadarItem[]>([]);
     const [popularMovies, setPopularMovies] = useState<RadarItem[]>([]);
@@ -25,17 +25,6 @@ export default function MoviesPage() {
         // Fetch public data once (updates on F5 only)
         const loadPublicData = async () => {
             try {
-                // Fetch upcoming
-                const upcomingSnap = await getDoc(doc(db, 'public', 'upcoming'));
-                if (upcomingSnap.exists()) {
-                    const data = upcomingSnap.data();
-                    const allItems = data.items || [];
-                    setUpcomingMovies(allItems.filter((r: RadarItem) => r.tmdbMediaType === 'movie').slice(0, 20));
-                } else {
-                    console.warn('[Movies Page] Document public/upcoming does not exist');
-                    setUpcomingMovies([]);
-                }
-
                 // Fetch now-playing
                 const nowPlayingSnap = await getDoc(doc(db, 'public', 'now-playing'));
                 if (nowPlayingSnap.exists()) {
@@ -110,6 +99,9 @@ export default function MoviesPage() {
                     />
                 </section>
 
+                {/* EM BREVE - Calendar Movies */}
+                <ComingSoonCarousel type="movie" categoryUrl="/movies/category/coming-soon" />
+
                 {/* Categorias */}
                 <section>
 
@@ -139,17 +131,9 @@ export default function MoviesPage() {
                             isLoading={isLoading}
                         />
                     )}
-
-                    {upcomingMovies.length > 0 && (
-                        <CategoryCarousel
-                            title="EM BREVE"
-                            items={upcomingMovies}
-                            categoryUrl="/movies/category/upcoming"
-                            isLoading={isLoading}
-                        />
-                    )}
                 </section>
             </div>
         </div>
     );
 }
+

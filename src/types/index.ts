@@ -81,6 +81,7 @@ export interface RadarItem {
     season_number: number;
   };
   reason?: string;
+  season_info?: string; // Calendar-specific: e.g. "estréia", "T2", etc.
 
   // DADOS COMPLETOS DO TMDB (para evitar request adicional no modal)
   backdropUrl?: string;           // Backdrop 16:9

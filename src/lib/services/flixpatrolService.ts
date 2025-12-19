@@ -11,7 +11,7 @@ const CACHE_DURATION = 60 * 60 * 1000; // 1 hour
 const memoryCache: Map<string, { data: RadarItem[], expiresAt: number }> = new Map();
 
 type StreamingService = 'netflix' | 'prime' | 'disney' | 'hbo' | 'apple';
-type CacheType = `top10-${StreamingService}` | 'global-movies' | 'global-series';
+type CacheType = `top10-${StreamingService}` | 'global-movies' | 'global-series' | 'calendar-movies' | 'calendar-tv' | 'calendar-overall';
 
 // FlixPatrol Quick API response (format padrão - dados completos)
 interface QuickItemFull {
@@ -39,6 +39,7 @@ interface CalendarMovie {
     date: string;
     imdb_id: string;
     type: 'movie';
+    season_info: string; // e.g., "estréia"
     tmdb?: {
         tmdb_id: number;
         type: 'movie';
@@ -59,6 +60,7 @@ interface CalendarTVShow {
     country: string;
     genres: string[];
     type: 'tv';
+    season_info: string; // e.g., "estréia", "T2", etc.
     tmdb?: {
         tmdb_id: number;
         type: 'tv';
@@ -259,6 +261,22 @@ export async function getGlobalTop10(type: 'movies' | 'series'): Promise<RadarIt
 }
 
 /**
+ * Gets calendar data for display (READ-ONLY - for frontend)
+ * Data is populated by cron job, this function only reads from Firebase cache
+ */
+export async function getCalendarData(type: 'movies' | 'tv' | 'overall'): Promise<RadarItem[]> {
+    const cacheType: CacheType = `calendar-${type === 'movies' ? 'movies' : type === 'tv' ? 'tv' : 'overall'}`;
+    const cachedData = await getFromFirebaseCache(cacheType);
+
+    if (cachedData && cachedData.length > 0) {
+        return cachedData;
+    }
+
+    console.warn(`[FlixPatrol] No calendar data for ${cacheType}. Cron job may not have run yet.`);
+    return [];
+}
+
+/**
  * Clears local cache
  */
 export async function clearLocalCache(cacheType?: CacheType): Promise<void> {
@@ -309,6 +327,7 @@ export async function getCalendar(type: 'movies' | 'tv-shows' | 'overall'): Prom
                     releaseDate: item.date,
                     type: item.tmdb.type,
                     listType: 'upcoming',
+                    season_info: item.season_info, // Include season info from API
                     posterUrl: item.tmdb.poster_path ? `https://image.tmdb.org/t/p/w500${item.tmdb.poster_path}` : undefined,
                     backdropUrl: item.tmdb.backdrop_path ? `https://image.tmdb.org/t/p/original${item.tmdb.backdrop_path}` : undefined,
                     overview: item.tmdb.overview,

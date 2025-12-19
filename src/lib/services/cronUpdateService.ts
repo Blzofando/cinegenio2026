@@ -7,7 +7,7 @@ const API_BASE_URL = 'https://top-10-streamings.onrender.com';
 const CACHE_VALIDITY = {
     TOP_10: 30 * 60 * 1000, // 30 minutos
     TMDB_CAROUSELS: 60 * 60 * 1000, // 1 hora
-    CALENDAR: 3 * 60 * 60 * 1000, // 3 hours (futuro)
+    CALENDAR: 6 * 60 * 60 * 1000, // 6 hours
 };
 
 export type StreamingService = 'netflix' | 'prime' | 'disney' | 'hbo' | 'apple';
@@ -78,7 +78,7 @@ export async function getCacheStaleness() {
     }
 
     // Check TMDB carousel caches
-    const carouselTypes = ['upcoming', 'now-playing', 'popular-movies', 'on-the-air', 'popular-tv', 'trending'];
+    const carouselTypes = ['now-playing', 'popular-movies', 'on-the-air', 'popular-tv', 'trending'];
     for (const type of carouselTypes) {
         const docRef = db.collection('public').doc(type);
         const doc = await docRef.get();
@@ -93,6 +93,25 @@ export async function getCacheStaleness() {
             });
         } else {
             staleness.push({ type, age: Infinity, priority: 2 });
+        }
+    }
+
+    // Check calendar caches
+    const calendarTypes = ['calendar-movies', 'calendar-tv', 'calendar-overall'];
+    for (const type of calendarTypes) {
+        const docRef = db.collection('public').doc(type);
+        const doc = await docRef.get();
+
+        if (doc.exists) {
+            const data = doc.data();
+            const age = now - (data?.lastUpdated || 0);
+            staleness.push({
+                type,
+                age,
+                priority: age > CACHE_VALIDITY.CALENDAR ? 3 : 0, // Lower priority than Top10 but check them
+            });
+        } else {
+            staleness.push({ type, age: Infinity, priority: 3 });
         }
     }
 
@@ -337,31 +356,6 @@ export async function updateTMDBCarousels(): Promise<string[]> {
     const updates: string[] = [];
 
     try {
-        // Upcoming movies
-        const upcomingRes = await fetch(
-            `https://api.themoviedb.org/3/movie/upcoming?api_key=${apiKey}&language=pt-BR&region=BR&page=1`
-        );
-        const upcomingData = await upcomingRes.json();
-        const upcomingItems = upcomingData.results.slice(0, 20).map((item: any) => ({
-            id: item.id,
-            tmdbMediaType: 'movie' as const,
-            title: item.title,
-            releaseDate: item.release_date,
-            type: 'movie' as const,
-            listType: 'upcoming',
-            posterUrl: item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : undefined,
-            backdropUrl: item.backdrop_path ? `https://image.tmdb.org/t/p/original${item.backdrop_path}` : undefined,
-            overview: item.overview,
-            voteAverage: item.vote_average,
-        })).map(removeUndefined);
-
-        await db.collection('public').doc('upcoming').set({
-            items: upcomingItems,
-            lastUpdated: Date.now(),
-            expiresAt: Date.now() + CACHE_VALIDITY.TMDB_CAROUSELS,
-        });
-        updates.push(`upcoming (${upcomingItems.length} items)`);
-
         // Now playing movies
         const nowPlayingRes = await fetch(
             `https://api.themoviedb.org/3/movie/now_playing?api_key=${apiKey}&language=pt-BR&region=BR&page=1`
@@ -642,3 +636,110 @@ export async function updateGlobalCache(): Promise<string[]> {
         throw error;
     }
 }
+
+/**
+ * Update calendar cache for movies, tv, and overall
+ */
+export async function updateCalendarCache(): Promise<string[]> {
+    const apiKey = process.env.FLIXPATROL_API_KEY || process.env.NEXT_PUBLIC_FLIXPATROL_API_KEY;
+    if (!apiKey) {
+        throw new Error('FlixPatrol API key not found');
+    }
+
+    const updates: string[] = [];
+
+    try {
+        // Fetch only from overall endpoint (has standardized format)
+        console.log(`[Cron] Fetching calendar overall...`);
+
+        const response = await fetch(`${API_BASE_URL}/api/quick/calendar/overall`, {
+            headers: { 'X-API-Key': apiKey },
+        });
+
+        if (!response.ok) {
+            console.error(`[Cron] Calendar API error: ${response.status}`);
+            throw new Error(`Calendar API returned ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        // Extract releases array
+        const releases: any[] = data.releases || [];
+        console.log(`[Cron] Received ${releases.length} total calendar items`);
+
+        // Convert to RadarItem format
+        const radarItems: RadarItem[] = [];
+        let skippedCount = 0;
+
+        for (const item of releases) {
+            if (item.tmdb_id && item.type) {
+                const radarItem: RadarItem = {
+                    id: item.tmdb_id,
+                    tmdbMediaType: item.type === 'movie' ? 'movie' : 'tv',
+                    title: item.title,
+                    releaseDate: item.releaseDate,
+                    type: item.type === 'movie' ? 'movie' : 'tv',
+                    listType: 'upcoming',
+                    season_info: item.season_info,
+                    posterUrl: item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : undefined,
+                    backdropUrl: item.backdrop_path ? `https://image.tmdb.org/t/p/original${item.backdrop_path}` : undefined,
+                    overview: item.overview,
+                    voteAverage: item.vote_average,
+                    genres: item.genres,
+                };
+                radarItems.push(removeUndefined(radarItem));
+            } else {
+                skippedCount++;
+                if (skippedCount <= 2) {
+                    console.log(`[Cron] Skipping item without tmdb_id:`, JSON.stringify(item).substring(0, 150));
+                }
+            }
+        }
+
+        if (skippedCount > 0) {
+            console.log(`[Cron] ⚠️ Skipped ${skippedCount}/${releases.length} items without tmdb_id`);
+        }
+
+        console.log(`[Cron] Successfully converted ${radarItems.length} calendar items`);
+
+        // Filter and save to each cache type
+        const movieItems = radarItems.filter(item => item.type === 'movie');
+        const tvItems = radarItems.filter(item => item.type === 'tv');
+
+        // Save calendar-movies
+        await db.collection('public').doc('calendar-movies').set({
+            items: movieItems,
+            lastUpdated: Date.now(),
+            expiresAt: Date.now() + CACHE_VALIDITY.CALENDAR,
+            cacheType: 'calendar-movies',
+        });
+        updates.push(`calendar-movies (${movieItems.length} items)`);
+        console.log(`[Cron] ✅ Updated calendar-movies`);
+
+        // Save calendar-tv
+        await db.collection('public').doc('calendar-tv').set({
+            items: tvItems,
+            lastUpdated: Date.now(),
+            expiresAt: Date.now() + CACHE_VALIDITY.CALENDAR,
+            cacheType: 'calendar-tv',
+        });
+        updates.push(`calendar-tv (${tvItems.length} items)`);
+        console.log(`[Cron] ✅ Updated calendar-tv`);
+
+        // Save calendar-overall (all items)
+        await db.collection('public').doc('calendar-overall').set({
+            items: radarItems,
+            lastUpdated: Date.now(),
+            expiresAt: Date.now() + CACHE_VALIDITY.CALENDAR,
+            cacheType: 'calendar-overall',
+        });
+        updates.push(`calendar-overall (${radarItems.length} items)`);
+        console.log(`[Cron] ✅ Updated calendar-overall`);
+
+        return updates;
+    } catch (error) {
+        console.error('[Cron] Error updating calendar cache:', error);
+        throw error;
+    }
+}
+

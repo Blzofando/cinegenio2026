@@ -5,13 +5,11 @@ import { Home, Film, Tv, Search, User, Sparkles } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import SearchBar from './SearchBar';
-import UserMenu from '../ui/UserMenu';
 
 const MobileBottomNav: React.FC = () => {
     const pathname = usePathname();
     const router = useRouter();
     const [showSearchModal, setShowSearchModal] = useState(false);
-    const [showProfileMenu, setShowProfileMenu] = useState(false);
 
     const isActive = (path: string) => {
         if (path === '/dashboard') return pathname === path;
@@ -70,13 +68,13 @@ const MobileBottomNav: React.FC = () => {
                     </Link>
 
                     {/* Profile Button */}
-                    <button
-                        onClick={() => setShowProfileMenu(!showProfileMenu)}
-                        className="flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-all text-gray-400 hover:text-white relative"
+                    <Link
+                        href="/dashboard/profile"
+                        className="flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-all text-gray-400 hover:text-white"
                     >
                         <User className="w-6 h-6 stroke-2" />
                         <span className="text-[10px] font-medium">Perfil</span>
-                    </button>
+                    </Link>
                 </div>
             </nav>
 
@@ -99,19 +97,6 @@ const MobileBottomNav: React.FC = () => {
                         </div>
                     </div>
                 </div>
-            )}
-
-            {/* Profile Dropdown */}
-            {showProfileMenu && (
-                <>
-                    <div
-                        className="md:hidden fixed inset-0 z-[55]"
-                        onClick={() => setShowProfileMenu(false)}
-                    />
-                    <div className="md:hidden fixed bottom-16 right-2 z-[60]">
-                        <UserMenu />
-                    </div>
-                </>
             )}
         </>
     );

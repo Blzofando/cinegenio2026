@@ -4,7 +4,6 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Sparkles } from 'lucide-react';
-import UserMenu from '@/components/ui/UserMenu';
 import SearchBar from './SearchBar';
 
 export default function DashboardHeader() {
@@ -70,8 +69,18 @@ export default function DashboardHeader() {
                     {/* Search Bar */}
                     <SearchBar />
 
-                    {/* User Menu */}
-                    <UserMenu />
+                    {/* Profile Link - Desktop */}
+                    <Link
+                        href="/dashboard/profile"
+                        className="hidden md:flex items-center gap-2 px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 transition-all border border-white/10"
+                    >
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center">
+                            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                        </div>
+                        <span className="text-white text-sm font-medium">Meu Perfil</span>
+                    </Link>
                 </div>
             </div>
         </div>

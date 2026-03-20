@@ -17,6 +17,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/lib/firebase/client';
 import { collection, getDocs } from 'firebase/firestore';
 import { checkWatchedStatus, RatingHistory, RatingType } from '@/lib/watchedService';
+import MediaDetailsSkeleton from '@/components/shared/skeletons/MediaDetailsSkeleton';
 
 interface TVPageProps {
     params: Promise<{ id: string }>;
@@ -91,11 +92,7 @@ export default function TVPage({ params }: TVPageProps) {
     }, [user, resolvedId, watchStatus]);
 
     if (isLoading || !tvData) {
-        return (
-            <div className="min-h-screen bg-black flex items-center justify-center">
-                <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-purple-600"></div>
-            </div>
-        );
+        return <MediaDetailsSkeleton variant="page" />;
     }
 
     const title = tvData.name || tvData.title || 'Título Desconhecido';
@@ -152,6 +149,7 @@ export default function TVPage({ params }: TVPageProps) {
         title: title,
         name: title,
         posterUrl: posterUrl,
+        backdropUrl: backdropUrl,
         ...resumeData // Adiciona season/episode se disponível
     };
 
@@ -199,8 +197,7 @@ export default function TVPage({ params }: TVPageProps) {
                                     alt={title}
                                     width={400}
                                     height={150}
-                                    className="max-h-[60px] md:max-h-[80px] lg:max-h-[96px] w-auto object-contain"
-                                    style={{ filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.8))' }}
+                                    className="max-h-[60px] md:max-h-[80px] lg:max-h-[96px] w-auto object-contain drop-shadow-[0_4px_8px_rgba(0,0,0,0.8)]"
                                 />
                             </div>
                         ) : (
@@ -475,12 +472,11 @@ export default function TVPage({ params }: TVPageProps) {
             </div>
 
             {/* Video Player Modal */}
-            {showPlayer && (
-                <VideoPlayerModal
-                    item={displayableItem}
-                    onClose={() => setShowPlayer(false)}
-                />
-            )}
+            <VideoPlayerModal
+                item={displayableItem}
+                isOpen={showPlayer}
+                onClose={() => setShowPlayer(false)}
+            />
         </div>
     );
 }

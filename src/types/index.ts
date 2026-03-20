@@ -135,6 +135,20 @@ export interface FlixPatrolResponse {
   tvShows?: FlixPatrolItem[];
 }
 
+export interface UserProfile {
+  uid: string;
+  name: string;
+  username: string;
+  email: string;
+  createdAt: number;
+  isApproved: boolean; // Flag de aprovação manual
+  photoURL?: string;
+  preferences?: {
+    favoriteGenres?: string[];
+    notifications?: boolean;
+  };
+}
+
 export interface FlixPatrolCacheDoc {
   service: 'netflix' | 'prime' | 'disney' | 'hbo' | 'apple';
   items: RadarItem[];
@@ -251,6 +265,8 @@ export interface DisplayableItem {
   media_type?: 'movie' | 'tv';
   release_date?: string;
   first_air_date?: string;
+  season?: number;
+  episode?: number;
 }
 
 // --- VIDEO PLAYER TYPES ---

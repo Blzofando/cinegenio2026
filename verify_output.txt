@@ -1,0 +1,7 @@
+[dotenv@17.2.1] injecting env (14) from .env.local -- tip: ­ƒøá´©Å  run anywhere with `dotenvx run -- yourcommand`
+--- Verificando Gemini ---
+Chave encontrada (prefixo): AIzaSyCtbN...
+
+--- Verificando Firebase Admin ---
+ERRO ao conectar com Gemini: [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent: [400 Bad Request] API Key not found. Please pass a valid API key. [{"@type":"type.googleapis.com/google.rpc.ErrorInfo","reason":"API_KEY_INVALID","domain":"googleapis.com","metadata":{"service":"generativelanguage.googleapis.com"}},{"@type":"type.googleapis.com/google.rpc.LocalizedMessage","locale":"en-US","message":"API Key not found. Please pass a valid API key."}]
+Sucesso! Conectado ao Firebase. Cole├º├Áes encontradas: 3

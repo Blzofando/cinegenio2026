@@ -5,6 +5,8 @@ import { Play, Lock, Calendar } from 'lucide-react';
 import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
 import { getSeriesMetadata, getSeasonEpisodes, EpisodeData } from '@/lib/services/seriesMetadataCache';
+import { Button } from '../ui/Button';
+import { ModalHeader, ModalBody } from '../ui/Modal';
 
 interface EpisodeSelectorProps {
     showId: number;
@@ -99,30 +101,31 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({ showId, onSelect, onC
     }
 
     return (
-        <div className="flex flex-col h-[85vh]">
-            <div className="p-4 md:p-6 border-b border-gray-800">
-                <h2 className="text-2xl md:text-3xl font-black text-white">
-                    {step === 1 ? 'Escolha a Temporada' : 'Escolha o Episódio'}
-                </h2>
+        <div className="flex flex-col max-h-[85vh]">
+            <ModalHeader 
+                title={step === 1 ? 'Escolha a Temporada' : 'Escolha o Episódio'}
+                onClose={onClose}
+            >
                 {selectedSeason && step === 2 && (
                     <p className="mt-2 text-xs md:text-sm text-gray-400">
                         Temporada {selectedSeason} • {episodes.length} episódios
                     </p>
                 )}
-            </div>
+            </ModalHeader>
 
-            <div className="flex-1 overflow-y-auto p-4 md:p-6 scrollbar-hide">
+            <ModalBody className="flex-1 overflow-y-auto p-4 md:p-6 scrollbar-hide">
                 {step === 1 && (
                     <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 md:gap-4">
                         {seasons.map((season) => (
-                            <button
+                            <Button
                                 key={season.season_number}
+                                variant="glass"
                                 onClick={() => handleSeasonSelect(season.season_number)}
-                                className="aspect-square bg-gray-800/50 hover:bg-gray-700 border-2 border-gray-700 hover:border-purple-500 rounded-xl transition-all transform hover:scale-105 flex flex-col items-center justify-center gap-1 md:gap-2"
+                                className="aspect-square flex-col gap-1 md:gap-2 h-auto p-4 border-2 border-transparent hover:border-purple-500/50"
                             >
                                 <span className="text-3xl md:text-4xl font-black text-white">{season.season_number}</span>
                                 <span className="text-[10px] md:text-xs text-gray-400">{season.episode_count} eps</span>
-                            </button>
+                            </Button>
                         ))}
                     </div>
                 )}
@@ -169,10 +172,11 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({ showId, onSelect, onC
 
                                 return (
                                     <React.Fragment key={episode.episode_number}>
-                                        <button
+                                    <Button
+                                            variant="ghost"
                                             onClick={() => handleEpisodeClick(episode)}
                                             disabled={isLocked}
-                                            className={`group relative aspect-video rounded-xl overflow-hidden transition-all transform hover:scale-105 ${isLocked
+                                            className={`group relative aspect-video rounded-xl overflow-hidden transition-all transform hover:scale-105 p-0 h-auto ${isLocked
                                                 ? 'opacity-60 cursor-not-allowed'
                                                 : isSelected
                                                     ? 'ring-4 ring-purple-500 shadow-xl shadow-purple-500/50'
@@ -237,7 +241,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({ showId, onSelect, onC
                                                     </svg>
                                                 </div>
                                             )}
-                                        </button>
+                                        </Button>
 
                                         {/* Info for other rows */}
                                         {isLastCardBeforeSelectedRow && currentEpisode && (
@@ -270,47 +274,40 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({ showId, onSelect, onC
                         </div>
                     </div>
                 )}
-            </div>
+            </ModalBody>
 
-            <div className="p-4 md:p-6 border-t border-gray-800 bg-black/50 backdrop-blur-lg">
+            <div className="p-4 md:p-6 border-t border-white/5 bg-black/50 backdrop-blur-lg">
                 <div className="flex gap-2 md:gap-3">
                     {step === 2 && (
                         <>
-                            <button
+                            <Button
                                 onClick={() => setStep(1)}
-                                className="px-4 md:px-6 py-2 md:py-3 bg-gray-800 hover:bg-gray-700 rounded-xl font-bold text-white text-sm md:text-base transition-all"
+                                variant="secondary"
+                                className="px-6"
                             >
                                 ← Voltar
-                            </button>
-                            <button
+                            </Button>
+                            <Button
                                 onClick={handleWatch}
                                 disabled={!selectedEpisode}
-                                className="flex-1 flex items-center justify-center gap-2 md:gap-3 px-4 md:px-8 py-3 md:py-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 disabled:from-gray-700 disabled:to-gray-700 disabled:cursor-not-allowed rounded-xl font-bold text-white text-sm md:text-lg transition-all transform hover:scale-105 shadow-lg shadow-green-600/50"
+                                variant="purple"
+                                className="flex-1 text-base md:text-lg"
+                                rightIcon={Play}
                             >
-                                <Play className="w-5 h-5 md:w-6 md:h-6 fill-current" />
                                 <span className="hidden xs:inline">Assistir Agora</span>
                                 <span className="xs:hidden">Assistir</span>
-                            </button>
+                            </Button>
                         </>
                     )}
-                    <button
+                    <Button
                         onClick={onClose}
-                        className="px-4 md:px-6 py-2 md:py-3 bg-gray-800 hover:bg-gray-700 rounded-xl font-bold text-white text-sm md:text-base transition-colors"
+                        variant="ghost"
+                        className="px-6 text-gray-400 hover:text-white"
                     >
                         Cancelar
-                    </button>
+                    </Button>
                 </div>
             </div>
-
-            <style jsx global>{`
-                .scrollbar-hide {
-                    -ms-overflow-style: none;
-                    scrollbar-width: none;
-                }
-                .scrollbar-hide::-webkit-scrollbar {
-                    display: none;
-                }
-            `}</style>
         </div>
     );
 };

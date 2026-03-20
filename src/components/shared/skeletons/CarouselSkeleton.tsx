@@ -1,35 +1,43 @@
-'use client';
+import React from 'react';
+import { Skeleton } from '@/components/ui/Skeleton';
 
 interface CarouselSkeletonProps {
     title?: string;
+    itemCount?: number;
+    className?: string;
+    itemClassName?: string;
+    aspectRatio?: string;
 }
 
-export default function CarouselSkeleton({ title = "Carregando..." }: CarouselSkeletonProps) {
+export default function CarouselSkeleton({ 
+    title, 
+    itemCount = 8, 
+    className = "mb-8",
+    itemClassName = "w-[150px] md:w-[185px]",
+    aspectRatio = "aspect-[2/3]"
+}: CarouselSkeletonProps) {
     return (
-        <div className="mb-8">
+        <div className={className}>
             {/* Title skeleton */}
             {title && (
-                <h2 className="text-2xl font-bold text-white mb-4 px-4">
-                    {title}
-                </h2>
+                <div className="mb-4 px-4 md:px-6 lg:px-8 xl:px-12">
+                    <Skeleton className="h-8 w-64" />
+                </div>
             )}
 
             {/* Carousel items skeleton */}
-            <div className="flex gap-4 overflow-hidden px-4">
-                {[...Array(8)].map((_, i) => (
+            <div className="flex gap-4 overflow-hidden px-4 md:px-6 lg:px-8 xl:px-12">
+                {[...Array(itemCount)].map((_, i) => (
                     <div
                         key={i}
-                        className="flex-shrink-0 w-[150px] md:w-[185px] animate-pulse"
+                        className={`flex-shrink-0 ${itemClassName}`}
                     >
                         {/* Poster placeholder */}
-                        <div className="aspect-[2/3] bg-gray-800/50 rounded-lg mb-2 relative overflow-hidden">
-                            {/* Shimmer effect */}
-                            <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-                        </div>
+                        <Skeleton className={`${aspectRatio} rounded-lg mb-2`} />
 
                         {/* Title placeholder */}
-                        <div className="h-4 bg-gray-700/50 rounded w-3/4 mb-1" />
-                        <div className="h-3 bg-gray-700/50 rounded w-1/2" />
+                        <Skeleton className="h-4 w-3/4 mb-1" />
+                        <Skeleton className="h-3 w-1/2" />
                     </div>
                 ))}
             </div>

@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { markAsWatched, RatingType } from '@/lib/watchedService';
+import { Button } from '@/components/ui/Button';
 
 interface RatingModalProps {
     item: {
@@ -92,12 +93,14 @@ const RatingModal: React.FC<RatingModalProps> = ({ item, onClose, onSuccess }) =
 
                 {/* Header */}
                 <div className="relative p-6 pb-4 shrink-0">
-                    <button
+                    <Button
+                        variant="ghost"
+                        size="icon"
                         onClick={onClose}
-                        className="absolute top-4 right-4 p-2 hover:bg-white/10 rounded-lg transition-colors group"
+                        className="absolute top-4 right-4 hover:bg-white/10 rounded-lg transition-colors group"
                     >
                         <X className="w-5 h-5 text-gray-400 group-hover:text-white transition-colors" />
-                    </button>
+                    </Button>
 
                     <div className="pr-8">
                         <h2 className="text-2xl font-black text-white mb-1">
@@ -118,28 +121,31 @@ const RatingModal: React.FC<RatingModalProps> = ({ item, onClose, onSuccess }) =
 
                             {/* Scope Tabs */}
                             <div className="flex bg-gray-800/50 p-1 rounded-xl">
-                                <button
+                                <Button
+                                    variant="ghost"
                                     onClick={() => setScope('series')}
                                     className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${scope === 'series' ? 'bg-purple-600 text-white shadow-lg' : 'text-gray-400 hover:text-white'
                                         }`}
                                 >
                                     Série Completa
-                                </button>
-                                <button
+                                </Button>
+                                <Button
+                                    variant="ghost"
                                     onClick={() => setScope('season')}
                                     className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${scope === 'season' ? 'bg-purple-600 text-white shadow-lg' : 'text-gray-400 hover:text-white'
                                         }`}
                                 >
                                     Temporada
-                                </button>
+                                </Button>
                             </div>
 
                             {/* Season Grid (Only if 'season' is selected) */}
                             {scope === 'season' && (
                                 <div className="grid grid-cols-4 gap-2 animate-in fade-in slide-in-from-top-2">
                                     {seasons.map((season) => (
-                                        <button
+                                        <Button
                                             key={season.id}
+                                            variant="ghost"
                                             onClick={() => setSelectedSeason(season.season_number)}
                                             className={`p-2 rounded-lg border text-sm font-medium transition-all ${selectedSeason === season.season_number
                                                     ? 'bg-purple-500/20 border-purple-500 text-white'
@@ -147,7 +153,7 @@ const RatingModal: React.FC<RatingModalProps> = ({ item, onClose, onSuccess }) =
                                                 }`}
                                         >
                                             {season.season_number === 0 ? 'Esp.' : `T${season.season_number}`}
-                                        </button>
+                                        </Button>
                                     ))}
                                 </div>
                             )}
@@ -161,8 +167,9 @@ const RatingModal: React.FC<RatingModalProps> = ({ item, onClose, onSuccess }) =
                                 const isSelected = selectedRating === rating.type;
 
                                 return (
-                                    <button
+                                    <Button
                                         key={rating.type}
+                                        variant="ghost"
                                         onClick={() => setSelectedRating(rating.type)}
                                         className={`relative flex-1 aspect-square rounded-xl border-2 transition-all duration-300 transform hover:scale-110 ${isSelected
                                             ? `border-transparent bg-gradient-to-br ${rating.gradient} shadow-lg scale-110`
@@ -180,7 +187,7 @@ const RatingModal: React.FC<RatingModalProps> = ({ item, onClose, onSuccess }) =
                                                 {rating.label}
                                             </span>
                                         </div>
-                                    </button>
+                                    </Button>
                                 );
                             })}
                         </div>
@@ -211,30 +218,26 @@ const RatingModal: React.FC<RatingModalProps> = ({ item, onClose, onSuccess }) =
 
                 {/* Footer */}
                 <div className="px-6 pb-6 flex gap-3 shrink-0">
-                    <button
+                    <Button
+                        variant="secondary"
                         onClick={onClose}
                         disabled={isSaving}
                         className="flex-1 px-6 py-3 bg-gray-800 hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl font-bold text-white text-sm transition-all"
                     >
                         Cancelar
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                        variant="primary"
                         onClick={handleSave}
+                        isLoading={isSaving}
                         disabled={!selectedRating || isSaving}
                         className={`flex-1 px-6 py-3 rounded-xl font-bold text-white text-sm shadow-lg transition-all transform hover:scale-105 disabled:scale-100 disabled:cursor-not-allowed ${selectedRating && selectedRatingData
                             ? `bg-gradient-to-r ${selectedRatingData.hoverGradient}`
                             : 'bg-gray-700'
                             }`}
                     >
-                        {isSaving ? (
-                            <span className="flex items-center justify-center gap-2">
-                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                Salvando...
-                            </span>
-                        ) : (
-                            'Salvar Avaliação'
-                        )}
-                    </button>
+                        Salvar Avaliação
+                    </Button>
                 </div>
             </div>
         </div>

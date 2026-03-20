@@ -8,6 +8,8 @@ import { HighlightItem } from '@/lib/services/highlightService';
 import VideoPlayerModal from './VideoPlayerModal';
 import CombinedPlayButton from './CombinedPlayButton';
 import { useWatchStatus } from '@/hooks/useWatchStatus';
+import { Button } from '@/components/ui/Button';
+import { cn } from '@/lib/utils';
 
 interface HeroCarouselProps {
     items: HighlightItem[];
@@ -68,7 +70,7 @@ const HeroCarousel: React.FC<HeroCarouselProps> = ({ items }) => {
     return (
         <>
             <div
-                className="relative w-full h-[70vh] md:h-[80vh] bg-black group"
+                className="relative w-full h-[85vh] md:h-[90vh] bg-black group"
                 onMouseEnter={() => setIsHovered(true)}
                 onMouseLeave={() => setIsHovered(false)}
             >
@@ -85,7 +87,7 @@ const HeroCarousel: React.FC<HeroCarouselProps> = ({ items }) => {
                                     src={item.backdropUrl}
                                     alt={item.title}
                                     fill
-                                    className="object-cover"
+                                    className="object-cover object-top"
                                     priority={index === 0}
                                 />
                             )}
@@ -93,12 +95,12 @@ const HeroCarousel: React.FC<HeroCarouselProps> = ({ items }) => {
                     ))}
                 </div>
 
-                {/* Gradient Overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
-                <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-transparent to-transparent" />
+                {/* Gradient Overlays */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 via-20% to-transparent pointer-events-none" />
+                <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/20 via-40% to-transparent pointer-events-none" />
 
                 {/* Content */}
-                <div className="absolute inset-0 flex flex-col justify-end p-6 md:p-12 max-w-7xl mx-auto">
+                <div className="absolute inset-0 flex flex-col justify-end px-4 pb-8 md:px-6 lg:px-8 xl:px-12 md:pb-16">
                     <div className="max-w-2xl space-y-4 mb-8">
                         {/* Title Logo or Text */}
                         {currentItem.logoUrl ? (
@@ -108,8 +110,7 @@ const HeroCarousel: React.FC<HeroCarouselProps> = ({ items }) => {
                                     alt={currentItem.title}
                                     width={400}
                                     height={120}
-                                    className="max-h-[40px] md:max-h-[60px] lg:max-h-[100px] w-auto object-contain"
-                                    style={{ filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.8))' }}
+                                    className="max-h-[40px] md:max-h-[60px] lg:max-h-[100px] w-auto object-contain drop-shadow-[0_4px_8px_rgba(0,0,0,0.8)]"
                                 />
                             </div>
                         ) : (
@@ -119,30 +120,31 @@ const HeroCarousel: React.FC<HeroCarouselProps> = ({ items }) => {
                         )}
 
                         {/* Metadata */}
-                        <div className="flex items-center gap-3 text-sm md:text-base text-white/90">
+                        <div className="flex items-center gap-3 text-xs md:text-sm">
                             {currentItem.voteAverage > 0 && (
-                                <div className="flex items-center gap-1">
-                                    <span className="text-yellow-400">★</span>
-                                    <span className="font-semibold">{currentItem.voteAverage.toFixed(1)}</span>
+                                <div className="flex items-center gap-1.5 bg-black/40 backdrop-blur-md px-2 py-0.5 rounded-md border border-white/10">
+                                    <span className="text-yellow-400 text-xs">★</span>
+                                    <span className="font-bold text-white">{currentItem.voteAverage.toFixed(1)}</span>
                                 </div>
                             )}
                             {currentItem.releaseDate && (
-                                <>
-                                    {currentItem.voteAverage > 0 && <span>•</span>}
-                                    <span>{new Date(currentItem.releaseDate).getFullYear()}</span>
-                                </>
+                                <span className="text-white/90 font-bold">
+                                    {new Date(currentItem.releaseDate).getFullYear()}
+                                </span>
                             )}
                             {currentItem.genres.length > 0 && (
                                 <>
-                                    <span>•</span>
-                                    <span>{currentItem.genres.slice(0, 3).join(', ')}</span>
+                                    <span className="text-white/30">•</span>
+                                    <span className="text-white/60 font-medium tracking-wide">
+                                        {currentItem.genres.slice(0, 3).join(' • ')}
+                                    </span>
                                 </>
                             )}
                         </div>
 
                         {/* Overview */}
                         {currentItem.overview && (
-                            <p className="text-sm md:text-lg text-white/80 line-clamp-3 max-w-xl">
+                            <p className="text-sm md:text-base text-white/70 line-clamp-3 max-w-xl leading-relaxed font-medium">
                                 {currentItem.overview}
                             </p>
                         )}
@@ -162,46 +164,52 @@ const HeroCarousel: React.FC<HeroCarouselProps> = ({ items }) => {
                             />
 
                             {/* More Info Button - Navigate to page */}
-                            <Link href={`/${currentItem.tmdbMediaType}/${currentItem.id}`}>
-                                <button className="flex items-center gap-2 px-4 md:px-6 py-2 md:py-3 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white font-semibold rounded-lg transition-all text-sm md:text-base">
+                             <Link href={`/${currentItem.tmdbMediaType}/${currentItem.id}`}>
+                                <Button
+                                    variant="glass"
+                                    className="flex items-center gap-2"
+                                >
                                     <Info className="w-4 h-4 md:w-5 md:h-5" />
                                     Ver Mais
-                                </button>
+                                </Button>
                             </Link>
                         </div>
                     </div>
 
-                    {/* Indicators (Dots) */}
-                    <div className="flex gap-2 items-center justify-center md:justify-start mb-4">
+                    <div className="flex gap-1.5 items-center justify-center md:justify-start mb-4">
                         {items.map((_, index) => (
-                            <button
-                                key={index}
-                                onClick={() => goToSlide(index)}
-                                className={`h-1.5 rounded-full transition-all ${index === currentIndex
-                                    ? 'bg-white w-8'
-                                    : 'bg-white/40 w-1.5 hover:bg-white/60'
-                                    }`}
-                                aria-label={`Go to slide ${index + 1}`}
-                            />
+                                <button
+                                    key={index}
+                                    onClick={() => goToSlide(index)}
+                                    className={cn(
+                                        "h-1 p-0 transition-all rounded-full cursor-pointer",
+                                        index === currentIndex ? "bg-white w-6" : "bg-white/20 w-1 hover:bg-white/40"
+                                    )}
+                                    aria-label={`Go to slide ${index + 1}`}
+                                />
                         ))}
                     </div>
                 </div>
 
                 {/* Navigation Arrows */}
-                <button
+                 <Button
+                    variant="glass"
+                    size="icon"
                     onClick={goToPrevious}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 p-2 bg-black/50 hover:bg-black/70 text-white rounded-full transition-all opacity-0 group-hover:opacity-100 md:opacity-100"
+                    className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full opacity-0 group-hover:opacity-100 md:opacity-100 h-10 w-10 md:h-12 md:w-12"
                     aria-label="Previous slide"
                 >
                     <ChevronLeft className="w-6 h-6" />
-                </button>
-                <button
+                </Button>
+                <Button
+                    variant="glass"
+                    size="icon"
                     onClick={goToNext}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-black/50 hover:bg-black/70 text-white rounded-full transition-all opacity-0 group-hover:opacity-100 md:opacity-100"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full opacity-0 group-hover:opacity-100 md:opacity-100 h-10 w-10 md:h-12 md:w-12"
                     aria-label="Next slide"
                 >
                     <ChevronRight className="w-6 h-6" />
-                </button>
+                </Button>
             </div >
 
             {/* Video Player Modal */}
@@ -209,6 +217,7 @@ const HeroCarousel: React.FC<HeroCarouselProps> = ({ items }) => {
                 showPlayer && displayableItem && (
                     <VideoPlayerModal
                         item={displayableItem}
+                        isOpen={showPlayer}
                         onClose={() => setShowPlayer(false)}
                     />
                 )

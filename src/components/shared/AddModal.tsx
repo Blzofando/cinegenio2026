@@ -6,7 +6,8 @@ import React, { useState, useContext } from 'react';
 import { WatchedDataContext } from '@/contexts/WatchedDataContext';
 import { Rating, TMDbSearchResult } from '@/types';
 import Modal from './modal';
-import TitleSelector from './TitleSelector'; // <-- Este arquivo ainda falta
+import TitleSelector from './TitleSelector';
+import { Button } from '@/components/ui/Button';
 
 const ratingOptions: { rating: Rating; emoji: string; label: string }[] = [
     { rating: 'amei', emoji: '😍', label: 'Amei' },
@@ -68,10 +69,16 @@ const AddModal: React.FC<AddModalProps> = ({ mode, onClose, onSubmit }) => {
                         <label className="block text-sm font-medium text-gray-300 mb-3 text-center">Minha Avaliação</label>
                         <div className="flex justify-center gap-2 sm:gap-4">
                             {ratingOptions.map(opt => (
-                                <button key={opt.rating} type="button" onClick={() => setRating(opt.rating)} className={`px-4 py-2 text-lg rounded-lg transition-all duration-200 flex flex-col items-center gap-1 w-20 ${rating === opt.rating ? 'bg-indigo-600 text-white scale-110 shadow-lg' : 'bg-gray-700 hover:bg-gray-600 text-gray-300'}`}>
+                                <Button 
+                                    key={opt.rating} 
+                                    type="button" 
+                                    variant="ghost"
+                                    onClick={() => setRating(opt.rating)} 
+                                    className={`h-auto px-4 py-2 text-lg rounded-lg transition-all duration-200 flex flex-col items-center gap-1 w-20 ${rating === opt.rating ? 'bg-indigo-600 text-white scale-110 shadow-lg hover:bg-indigo-700' : 'bg-gray-700 hover:bg-gray-600 text-gray-300'}`}
+                                >
                                     <span className="text-2xl">{opt.emoji}</span>
                                     <span className="text-xs font-bold">{opt.label}</span>
-                                </button>
+                                </Button>
                             ))}
                         </div>
                     </div>
@@ -80,10 +87,19 @@ const AddModal: React.FC<AddModalProps> = ({ mode, onClose, onSubmit }) => {
                 {error && <p className="text-red-400 text-sm mb-4 text-center">{error}</p>}
                 
                 <div className="flex justify-end gap-3 border-t border-gray-700 pt-4 mt-4">
-                    <button type="button" onClick={onClose} className="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-lg">Cancelar</button>
-                    <button type="submit" disabled={isAdding || !selectedSuggestion} className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg disabled:bg-gray-600 disabled:cursor-not-allowed">
+                    <Button 
+                        type="button" 
+                        variant="secondary"
+                        onClick={onClose} 
+                    >
+                        Cancelar
+                    </Button>
+                    <Button 
+                        type="submit" 
+                        disabled={isAdding || !selectedSuggestion}
+                    >
                         {isAdding ? 'Adicionando...' : 'Adicionar'}
-                    </button>
+                    </Button>
                 </div>
             </form>
         </Modal>

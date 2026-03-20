@@ -1,632 +1,237 @@
-"use client";
+'use client';
 
-import React, { useState, useEffect } from 'react';
-import { X, RefreshCw } from 'lucide-react';
-import { DisplayableItem } from '@/types';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { X, Calendar, Clock, Star, Users, Layout } from 'lucide-react';
+import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
-import { getProgress, handlePlayerEvent } from '@/lib/videoProgressService';
-import { saveStartWatching, saveStopWatching } from '@/lib/nowWatchingService';
-import { saveDualEpisodes, swapToNextEpisode } from '@/lib/dualEpisodeService';
-import { PlayerEvent } from '@/types';
+import { DisplayableItem } from '@/types';
+import { Button } from '@/components/ui/Button';
+import { getPlayerUrl } from '@/lib/videoPlayerUtils';
+import { useVideoPlayerProgress } from '@/hooks/useVideoPlayerProgress';
+
+// Novos componentes modulares
+import PlayerFrame from './VideoPlayer/PlayerFrame';
+import ServerToggle from './VideoPlayer/ServerToggle';
 import EpisodeSelector from './EpisodeSelector';
-import { collection, getDocs, doc as firestoreDoc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '@/lib/firebase/client';
 
 interface VideoPlayerModalProps {
-    item: DisplayableItem;
-    onClose: () => void;
+  item: DisplayableItem;
+  isOpen: boolean;
+  onClose: () => void;
 }
 
-type Server = 'videasy' | 'vidking';
-
-const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({ item, onClose }) => {
-    const { user } = useAuth();
-    const [server, setServer] = useState<Server>('videasy');
-
-    // Check if season/episode are provided (from Continue Watching)
-    const hasEpisodeInfo = item.tmdbMediaType === 'tv' && 'season' in item && 'episode' in item;
-    const [showEpisodeSelector, setShowEpisodeSelector] = useState(item.tmdbMediaType === 'tv' && !hasEpisodeInfo);
-    const [selectedSeason, setSelectedSeason] = useState<number>(hasEpisodeInfo && 'season' in item ? (item as any).season : 1);
-    const [selectedEpisode, setSelectedEpisode] = useState<number>(hasEpisodeInfo && 'episode' in item ? (item as any).episode : 1);
-
-    const [playerUrl, setPlayerUrl] = useState<string>('');
-    const [showServerButton, setShowServerButton] = useState(false);
-    const [tvDetails, setTvDetails] = useState<any>(null);
-    const [movieDetails, setMovieDetails] = useState<any>(null);
-    const [initialLoadDone, setInitialLoadDone] = useState(false);
-    const [lastTimestamp, setLastTimestamp] = useState<number>(0);
-    const [lastDuration, setLastDuration] = useState<number>(0);
-    const lastTimestampRef = React.useRef<number>(0); // Ref for immediate access in handlers
-    const lastDurationRef = React.useRef<number>(0);
-    const [initialResumeTime, setInitialResumeTime] = useState<number | null>(null);
-
-    console.log('[VideoPlayer] Initial state:', { hasEpisodeInfo, selectedSeason, selectedEpisode, item });
-
-    // Load lastServer from nowWatching FIRST
-    useEffect(() => {
-        const loadServer = async () => {
-            if (!user) {
-                setInitialLoadDone(true);
-                return;
-            }
-
-            try {
-                const nowWatchingRef = collection(db, 'users', user.uid, 'nowWatching');
-                const snapshot = await getDocs(nowWatchingRef);
-
-                const docId = item.tmdbMediaType === 'movie'
-                    ? `movie_${item.id}`
-                    : `tv_${item.id}`;
-
-                const matchingDoc = snapshot.docs.find(doc => doc.id.startsWith(docId));
-
-                if (matchingDoc) {
-                    const data = matchingDoc.data();
-                    console.log('[VideoPlayer] ✅ LOADED from Firebase:', data);
-
-                    if (data.lastServer) {
-                        setServer(data.lastServer as Server);
-                        console.log('[VideoPlayer] 🎯 Server set to:', data.lastServer);
-                    }
-
-                    // ✅ Resume timestamp from nowWatching (for movies)
-                    if (item.tmdbMediaType === 'movie') {
-                        if (data.timestamp && data.timestamp > 0) {
-                            setLastTimestamp(data.timestamp); // Store for saving later
-                            setInitialResumeTime(data.timestamp); // Store for URL generation
-                            console.log('[VideoPlayer] 🕒 Loaded timestamp from nowWatching:', data.timestamp);
-                        } else {
-                            // Force 0 if no Firebase timestamp exists
-                            setInitialResumeTime(0);
-                            console.log('[VideoPlayer] 🕒 No Firebase timestamp - forcing 0');
-                        }
-                    }
-
-                    if (item.tmdbMediaType === 'tv' && data.season && data.episode) {
-                        setSelectedSeason(data.season);
-                        setSelectedEpisode(data.episode);
-                        setShowEpisodeSelector(false);
-                    }
-                } else {
-                    // No Firebase document found - force 0 for movies
-                    if (item.tmdbMediaType === 'movie') {
-                        setInitialResumeTime(0);
-                        console.log('[VideoPlayer] 🆕 No Firebase document - forcing movie to start from 0');
-                    }
-                }
-            } catch (error) {
-                console.error('[VideoPlayer] Error loading:', error);
-            } finally {
-                setInitialLoadDone(true);
-            }
-        };
-
-        loadServer();
-    }, [user, item.id, item.tmdbMediaType]);
-
-    // SAVE MOVIES immediately after loading
-    useEffect(() => {
-        if (!user || !initialLoadDone) return;
-        if (item.tmdbMediaType !== 'movie') return; // Only movies
-        if (!movieDetails) return; // Wait for movie details (runtime)
-
-        const saveMovie = async () => {
-            const durationSeconds = movieDetails.runtime ? movieDetails.runtime * 60 : 0;
-
-            // ✅ PRESERVE existing timestamp instead of always using 0
-            // Use initialResumeTime (loaded from Firebase) or lastTimestamp (from player events)
-            // Only use 0 if no previous progress exists
-            const timestampToSave = initialResumeTime || lastTimestamp || 0;
-
-            await saveStartWatching(user.uid, {
-                id: item.id,
-                mediaType: item.tmdbMediaType,
-                title: item.title || item.name || 'Unknown',
-                posterUrl: item.posterUrl || undefined,
-                backdropUrl: item.backdropUrl || undefined,
-                lastServer: server,
-                timestamp: timestampToSave,  // ✅ Use existing, not 0
-                duration: durationSeconds,
-            });
-            console.log('[VideoPlayer] 💾 Saved movie to nowWatching - timestamp:', timestampToSave, 'duration:', durationSeconds);
-        };
-
-        saveMovie();
-    }, [user, initialLoadDone, server, item, movieDetails, initialResumeTime, lastTimestamp]);
-
-    // SAVE dual episodes for TV SERIES AFTER loading (current + next)
-    useEffect(() => {
-        if (!user || !initialLoadDone || !tvDetails) return;
-        if (item.tmdbMediaType !== 'tv') return; // Only TV series
-
-        const saveBothEpisodes = async () => {
-            // Find next episode
-            const currentSeasonData = tvDetails.seasons?.find(
-                (s: any) => s.season_number === selectedSeason
-            );
-
-            let nextSeason = selectedSeason;
-            let nextEpisode = selectedEpisode + 1;
-            let hasNext = false;
-
-            if (currentSeasonData && nextEpisode > currentSeasonData.episode_count) {
-                const nextSeasonData = tvDetails.seasons?.find(
-                    (s: any) => s.season_number === selectedSeason + 1 && s.season_number > 0
-                );
-                if (nextSeasonData) {
-                    nextSeason = selectedSeason + 1;
-                    nextEpisode = 1;
-                    hasNext = true;
-                }
-            } else if (currentSeasonData) {
-                hasNext = true;
-            }
-
-            // Save current (viewed:true) + next (viewed:false) with full data
-            await saveDualEpisodes(
-                user.uid,
-                item.id,
-                item.title || item.name || 'Unknown',
-                item.posterUrl || undefined,
-                item.backdropUrl || undefined, // ✅ Pass backdrop 16:9
-                { season: selectedSeason, episode: selectedEpisode },
-                hasNext ? { season: nextSeason, episode: nextEpisode } : null,
-                server,
-                0, // timestamp (will be updated by player)
-                0  // currentDuration (will be fetched from TMDB)
-            );
-
-            console.log('[VideoPlayer] 💾 Saved dual episodes (current + next) with full TMDB data');
-        };
-
-        // ❌ NÃO SALVAR se seletor estiver aberto (usuário ainda não escolheu)
-        if (showEpisodeSelector) {
-            console.log('[VideoPlayer] ⏸️ Seletor aberto - aguardando escolha do usuário');
-            return;
-        }
-
-        saveBothEpisodes();
-    }, [user, initialLoadDone, tvDetails, server, selectedSeason, selectedEpisode, item, showEpisodeSelector]);
-
-    // Fetch TV details
-    useEffect(() => {
-        if (item.tmdbMediaType !== 'tv') return;
-
-        const fetchTVDetails = async () => {
-            try {
-                const response = await fetch(
-                    `https://api.themoviedb.org/3/tv/${item.id}?api_key=${process.env.NEXT_PUBLIC_TMDB_API_KEY}&language=pt-BR`
-                );
-                const data = await response.json();
-                setTvDetails(data);
-            } catch (error) {
-                console.error('Error fetching TV details:', error);
-            }
-        };
-
-        fetchTVDetails();
-        fetchTVDetails();
-    }, [item.id, item.tmdbMediaType]);
-
-    // Fetch MOVIE details (for runtime)
-    useEffect(() => {
-        if (item.tmdbMediaType !== 'movie') return;
-
-        const fetchMovieDetails = async () => {
-            try {
-                const response = await fetch(
-                    `https://api.themoviedb.org/3/movie/${item.id}?api_key=${process.env.NEXT_PUBLIC_TMDB_API_KEY}&language=pt-BR`
-                );
-                const data = await response.json();
-                setMovieDetails(data);
-            } catch (error) {
-                console.error('Error fetching movie details:', error);
-            }
-        };
-
-        fetchMovieDetails();
-    }, [item.id, item.tmdbMediaType]);
-
-    // Save server changes IMMEDIATELY to Firebase
-    useEffect(() => {
-        if (!user || !initialLoadDone) return;
-
-        const saveServerChange = async () => {
-            try {
-                const docId = item.tmdbMediaType === 'movie'
-                    ? `movie_${item.id}`
-                    : `tv_${item.id}`;
-
-                const docRef = firestoreDoc(db, 'users', user.uid, 'nowWatching', docId);
-
-                await setDoc(docRef, {
-                    lastServer: server,
-                    lastWatchedAt: serverTimestamp(),
-                }, { merge: true });
-
-                console.log(`[VideoPlayer] 💾 Server changed to: ${server}`);
-            } catch (error) {
-                console.error('[VideoPlayer] Error saving server:', error);
-            }
-        };
-
-        saveServerChange();
-    }, [server, user, initialLoadDone, item.id, item.tmdbMediaType]);
-
-    // Build player URL
-    useEffect(() => {
-        const buildUrl = async () => {
-            if (showEpisodeSelector) return;
-
-            const baseUrl = server === 'videasy'
-                ? 'https://player.videasy.net'
-                : 'https://www.vidking.net/embed';
-
-            let url = '';
-            let progressParam = '';
-
-            if (user) {
-                // 🔥 PRIORITY: Always use Firebase data, force 0 if missing
-                if (item.tmdbMediaType === 'movie') {
-                    // For movies: use initialResumeTime (loaded from Firebase nowWatching)
-                    // If Firebase has no data, initialResumeTime will be undefined - force 0
-                    const timestamp = initialResumeTime !== null && initialResumeTime !== undefined ? initialResumeTime : 0;
-                    if (timestamp > 0) {
-                        progressParam = `&progress=${Math.floor(timestamp)}`;
-                        console.log('[VideoPlayer] 🎬 Using Firebase timestamp for movie:', timestamp);
-                    } else {
-                        progressParam = `&progress=0`; // Force 0 to override player cache
-                        console.log('[VideoPlayer] 🎬 No Firebase timestamp - forcing player to 0');
-                    }
-                } else if (item.tmdbMediaType === 'tv') {
-                    // For TV episodes: read DIRECTLY from nowWatching/episodes subcollection
-                    // This is where timestamps are actually stored and edited
-                    try {
-                        const nowWatchingRef = collection(db, 'users', user.uid, 'nowWatching');
-                        const snapshot = await getDocs(nowWatchingRef);
-                        const docId = `tv_${item.id}`;
-                        const matchingDoc = snapshot.docs.find(doc => doc.id.startsWith(docId));
-
-                        let timestamp = 0; // Default to 0
-
-                        if (matchingDoc) {
-                            // Check episodes subcollection
-                            const episodesRef = collection(matchingDoc.ref, 'episodes');
-                            const episodesSnap = await getDocs(episodesRef);
-                            const episodeDocId = `s${selectedSeason}e${selectedEpisode}`;
-                            const episodeDoc = episodesSnap.docs.find(doc => doc.id === episodeDocId);
-
-                            if (episodeDoc) {
-                                const epData = episodeDoc.data();
-                                timestamp = epData.timestamp || 0;
-                                console.log(`[VideoPlayer] 📺 Loaded episode ${episodeDocId} timestamp from Firebase:`, timestamp);
-                            } else {
-                                console.log(`[VideoPlayer] 📺 No Firebase data for ${episodeDocId} - forcing 0`);
-                            }
-                        } else {
-                            console.log('[VideoPlayer] 📺 No nowWatching doc - forcing 0');
-                        }
-
-                        // ALWAYS set progress param, even if 0, to force player to start from 0
-                        if (timestamp > 0) {
-                            progressParam = `&progress=${Math.floor(timestamp)}`;
-                        } else {
-                            progressParam = `&progress=0`; // Force 0 to override player cache
-                        }
-                    } catch (error) {
-                        console.error('[VideoPlayer] Error loading TV timestamp:', error);
-                        progressParam = `&progress=0`; // Force 0 on error
-                    }
-                }
-            } else {
-                // Not logged in - always start from 0
-                progressParam = `&progress=0`;
-                console.log('[VideoPlayer] 👤 Not logged in - starting from 0');
-            }
-
-            if (item.tmdbMediaType === 'movie') {
-                url = `${baseUrl}/movie/${item.id}?color=8B5CF6${progressParam}`;
-            } else if (item.tmdbMediaType === 'tv') {
-                const nextEpisodeParam = '&nextEpisode=true';
-                url = `${baseUrl}/tv/${item.id}/${selectedSeason}/${selectedEpisode}?color=8B5CF6${nextEpisodeParam}${progressParam}`;
-            }
-
-            setPlayerUrl(url);
-        };
-
-        buildUrl();
-    }, [server, item, selectedSeason, selectedEpisode, showEpisodeSelector, user, initialResumeTime]);
-
-    // Listen to postMessage
-    useEffect(() => {
-        const handleMessage = async (event: MessageEvent) => {
-            try {
-                const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
-
-                // Player messages received (debug removed to reduce console spam)
-
-                if (data?.type === 'PLAYER_EVENT' && user) {
-                    const eventData = {
-                        ...data.data,
-                        lastServer: server,
-                    };
-
-                    await handlePlayerEvent(user.uid, { type: 'PLAYER_EVENT', data: eventData } as PlayerEvent);
-
-                    // Update current episode progress
-                    if (data.data.currentTime !== undefined && data.data.duration) {
-                        const currentProgress = (data.data.currentTime / data.data.duration) * 100;
-
-                        // Rastrear último timestamp (log removed)
-                        setLastTimestamp(Math.floor(data.data.currentTime));
-                        setLastDuration(Math.floor(data.data.duration));
-                        lastTimestampRef.current = Math.floor(data.data.currentTime);
-                        lastDurationRef.current = Math.floor(data.data.duration);
-
-                        // At 90%, swap display (current->viewed:false, next->viewed:true)
-                        if (item.tmdbMediaType === 'tv' && currentProgress >= 90 && user) {
-                            await swapToNextEpisode(user.uid, item.id);
-                            console.log('[VideoPlayer] 🔄 Swapped display at 90% (player unchanged)');
-                        }
-
-                        // Continue updating timestamp and duration during playback
-                        if (item.tmdbMediaType === 'tv') {
-                            // TV: Update episode in subcollection
-                            const seriesDocRef = firestoreDoc(db, 'users', user.uid, 'nowWatching', `tv_${item.id}`);
-                            const episodesRef = collection(seriesDocRef, 'episodes');
-                            const currentEpId = `s${selectedSeason}e${selectedEpisode}`;
-                            const currentEpRef = firestoreDoc(episodesRef, currentEpId);
-
-                            await setDoc(currentEpRef, {
-                                timestamp: Math.floor(data.data.currentTime),
-                                duration: Math.floor(data.data.duration),
-                                lastWatchedAt: serverTimestamp(),
-                            }, { merge: true });
-                        } else if (item.tmdbMediaType === 'movie') {
-                            // MOVIE: Update directly in nowWatching collection
-                            const movieDocRef = firestoreDoc(db, 'users', user.uid, 'nowWatching', `movie_${item.id}`);
-
-                            await setDoc(movieDocRef, {
-                                timestamp: Math.floor(data.data.currentTime),
-                                duration: Math.floor(data.data.duration),
-                                lastWatchedAt: serverTimestamp(),
-                            }, { merge: true });
-                        }
-                    }
-
-                    // Auto-advance to next episode
-                    if (data.data.event === 'ended' && item.tmdbMediaType === 'tv' && tvDetails) {
-                        const currentSeasonData = tvDetails.seasons?.find(
-                            (s: any) => s.season_number === selectedSeason
-                        );
-
-                        if (currentSeasonData) {
-                            if (selectedEpisode < currentSeasonData.episode_count) {
-                                setSelectedEpisode(prev => prev + 1);
-                            } else {
-                                const nextSeason = tvDetails.seasons?.find(
-                                    (s: any) => s.season_number === selectedSeason + 1 && s.season_number > 0
-                                );
-                                if (nextSeason) {
-                                    setSelectedSeason(prev => prev + 1);
-                                    setSelectedEpisode(1);
-                                }
-                            }
-                        }
-                    }
-                }
-            } catch (error) {
-                console.log('[VideoPlayer] Error:', error);
-            }
-        };
-
-        window.addEventListener('message', handleMessage);
-        return () => window.removeEventListener('message', handleMessage);
-    }, [user, server, item, tvDetails, selectedSeason, selectedEpisode]);
-
-    // ✅ AUTOMATIC TIMESTAMP TRACKING
-    // Auto-save last known timestamp every 10 minutes
-    useEffect(() => {
-        if (!playerUrl || showEpisodeSelector) return;
-
-        // Auto-save last known timestamp every 10 minutes
-        const autoSaveInterval = setInterval(() => {
-            if (lastTimestampRef.current > 0 && user) {
-                console.log('[VideoPlayer] 💾 Auto-saving timestamp (10min interval):', lastTimestampRef.current, 's');
-                saveCurrentProgress();
-            }
-        }, 600000); // Every 10 minutes (600,000ms)
-
-        return () => {
-            clearInterval(autoSaveInterval);
-        };
-    }, [playerUrl, showEpisodeSelector, user]);
-
-
-
-    const handleEpisodeSelect = (season: number, episode: number) => {
-        setSelectedSeason(season);
-        setSelectedEpisode(episode);
-        setShowEpisodeSelector(false);
+const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({ item, isOpen, onClose }) => {
+  const { user } = useAuth();
+  
+  // Estados básicos
+  const [server, setServer] = useState<'videasy' | 'vidking'>('videasy');
+  const [selectedSeason, setSelectedSeason] = useState(item.season || 1);
+  const [selectedEpisode, setSelectedEpisode] = useState(item.episode || 1);
+  const [showEpisodeSelector, setShowEpisodeSelector] = useState(!item.episode);
+  const [isHovering, setIsHovering] = useState(false);
+  const [tvDetails, setTvDetails] = useState<any>(null);
+  const [movieDetails, setMovieDetails] = useState<any>(null);
+
+  // Hook customizado para progresso e estado inicial
+  const {
+    initialLoadDone,
+    initialResumeTime,
+    handlePlayerMessage
+  } = useVideoPlayerProgress({
+    user,
+    item,
+    server,
+    setServer,
+    selectedSeason,
+    setSelectedSeason,
+    selectedEpisode,
+    setSelectedEpisode,
+    setShowEpisodeSelector,
+    movieDetails,
+  });
+
+  // Carregar detalhes (TMDB) - Mantendo aqui por enquanto para simplicidade do modal
+  useEffect(() => {
+    const fetchDetails = async () => {
+      try {
+        const type = item.tmdbMediaType === 'tv' ? 'tv' : 'movie';
+        const res = await fetch(
+          `https://api.themoviedb.org/3/${type}/${item.id}?api_key=${process.env.NEXT_PUBLIC_TMDB_API_KEY}&language=pt-BR&append_to_response=credits,videos`
+        );
+        const data = await res.json();
+        if (type === 'tv') setTvDetails(data);
+        else setMovieDetails(data);
+      } catch (error) {
+        console.error('Erro ao buscar detalhes:', error);
+      }
     };
 
-    const handleServerToggle = () => {
-        setServer(prev => prev === 'videasy' ? 'vidking' : 'videasy');
+    if (isOpen) fetchDetails();
+  }, [isOpen, item.id, item.tmdbMediaType]);
+
+  // Sincronizar mensagens do iframe
+  useEffect(() => {
+    const messageHandler = (event: MessageEvent) => {
+      if (event.data?.type === 'PLAYER_EVENT') {
+        handlePlayerMessage(event.data);
+      }
     };
 
-    const saveCurrentProgress = async () => {
-        if (!user || lastTimestampRef.current <= 0) return;
+    window.addEventListener('message', messageHandler);
+    return () => window.removeEventListener('message', messageHandler);
+  }, [handlePlayerMessage]);
 
-        try {
-            if (item.tmdbMediaType === 'tv') {
-                const seriesDocRef = firestoreDoc(db, 'users', user.uid, 'nowWatching', `tv_${item.id}`);
-                const episodesRef = collection(seriesDocRef, 'episodes');
-                const currentEpId = `s${selectedSeason}e${selectedEpisode}`;
-                const currentEpRef = firestoreDoc(episodesRef, currentEpId);
-                await setDoc(currentEpRef, {
-                    timestamp: lastTimestampRef.current,
-                    duration: lastDurationRef.current,
-                    lastWatchedAt: serverTimestamp(),
-                }, { merge: true });
-            } else if (item.tmdbMediaType === 'movie') {
-                const movieDocRef = firestoreDoc(db, 'users', user.uid, 'nowWatching', `movie_${item.id}`);
-                await setDoc(movieDocRef, {
-                    timestamp: lastTimestampRef.current,
-                    duration: lastDurationRef.current,
-                    lastWatchedAt: serverTimestamp(),
-                }, { merge: true });
-            }
-            console.log(`[VideoPlayer] 💾 Final timestamp saved: ${lastTimestampRef.current}s`);
-        } catch (error) {
-            console.error('[VideoPlayer] Error saving progress:', error);
-        }
-    };
+  // Gerar URL do Player
+  const playerUrl = useMemo(() => {
+    const base = getPlayerUrl(item, server, selectedSeason, selectedEpisode);
+    if (item.tmdbMediaType === 'movie' && initialResumeTime) {
+      return `${base}?t=${initialResumeTime}`;
+    }
+    return base;
+  }, [item, server, selectedSeason, selectedEpisode, initialResumeTime]);
 
-    const handleClose = async () => {
-        // Salvar último timestamp ANTES de fechar
-        await saveCurrentProgress();
+  if (!isOpen) return null;
 
-        if (user) {
-            await saveStopWatching(
-                user.uid,
-                item.id,
-                item.tmdbMediaType,
-                item.tmdbMediaType === 'tv' ? selectedSeason : undefined,
-                item.tmdbMediaType === 'tv' ? selectedEpisode : undefined
-            );
-        }
-        onClose();
-    };
+  const isTV = item.tmdbMediaType === 'tv';
+  const details = isTV ? tvDetails : movieDetails;
 
-    const handleBackdropClick = async (e: React.MouseEvent) => {
-        if (e.target === e.currentTarget) {
-            if (user) {
-                // Check if we need to advance to next episode
-                if (item.tmdbMediaType === 'tv' && tvDetails) {
-                    // Get current progress from nowWatching
-                    const nowWatchingRef = collection(db, 'users', user.uid, 'nowWatching');
-                    const snapshot = await getDocs(nowWatchingRef);
-                    const docId = `tv_${item.id}`; // Single doc per series!
-                    const matchingDoc = snapshot.docs.find(doc => doc.id === docId);
-
-                    if (matchingDoc) {
-                        const data = matchingDoc.data();
-                        const progress = data.timestamp && data.duration
-                            ? (data.timestamp / data.duration) * 100
-                            : 0;
-
-                        console.log('[VideoPlayer] Episode progress:', progress);
-
-                        // If >90% watched, save NEXT episode with zero progress
-                        if (progress >= 90) {
-                            const currentSeasonData = tvDetails.seasons?.find(
-                                (s: any) => s.season_number === selectedSeason
-                            );
-
-                            let nextSeason = selectedSeason;
-                            let nextEpisode = selectedEpisode + 1;
-
-                            // Check if there's a next episode
-                            if (currentSeasonData && nextEpisode > currentSeasonData.episode_count) {
-                                // Move to next season
-                                const nextSeasonData = tvDetails.seasons?.find(
-                                    (s: any) => s.season_number === selectedSeason + 1 && s.season_number > 0
-                                );
-                                if (nextSeasonData) {
-                                    nextSeason = selectedSeason + 1;
-                                    nextEpisode = 1;
-                                } else {
-                                    // No more episodes, just update last watched
-                                    await saveStopWatching(user.uid, item.id, item.tmdbMediaType, selectedSeason, selectedEpisode);
-                                    onClose();
-                                    return;
-                                }
-                            }
-
-                            // Save NEXT episode with zero progress
-                            await saveStartWatching(user.uid, {
-                                id: item.id,
-                                mediaType: item.tmdbMediaType,
-                                title: item.title || item.name || 'Unknown',
-                                posterUrl: item.posterUrl || undefined,
-                                season: nextSeason,
-                                episode: nextEpisode,
-                                lastServer: server,
-                                timestamp: 0,
-                                duration: 0,
-                            });
-
-                            console.log(`[VideoPlayer] ✅ Advanced to next: S${nextSeason}E${nextEpisode}`);
-                            onClose();
-                            return;
-                        }
-                    }
-                }
-
-                // Normal close - just update lastWatchedAt
-                await saveCurrentProgress(); // ✅ NOW SAVES PROGRESS TOO!
-                await saveStopWatching(
-                    user.uid,
-                    item.id,
-                    item.tmdbMediaType,
-                    item.tmdbMediaType === 'tv' ? selectedSeason : undefined,
-                    item.tmdbMediaType === 'tv' ? selectedEpisode : undefined
-                );
-            }
-            onClose();
-        }
-    };
-
-    return (
-        <div
-            className="fixed inset-0 z-50 flex items-start justify-center p-4 bg-black/90 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto"
-            onClick={handleBackdropClick}
-        >
-            <div className="relative w-full max-w-6xl my-4 bg-black rounded-2xl shadow-2xl animate-in zoom-in-95 duration-300">
-                <button
-                    onClick={handleClose}
-                    className="absolute top-4 right-4 z-20 p-2 bg-black/50 hover:bg-black/70 rounded-full transition-colors"
-                >
-                    <X className="w-6 h-6 text-white" />
-                </button>
-
-                {showEpisodeSelector ? (
-                    <div className="p-6 md:p-8">
-                        <EpisodeSelector
-                            showId={item.id}
-                            onSelect={handleEpisodeSelect}
-                            onClose={onClose}
-                        />
-                    </div>
-                ) : (
-                    <div
-                        className="relative"
-                        onMouseEnter={() => setShowServerButton(true)}
-                        onMouseLeave={() => setShowServerButton(false)}
-                    >
-                        <div className="relative w-full rounded-2xl overflow-hidden" style={{ aspectRatio: '16/9' }}>
-                            <iframe
-                                src={playerUrl}
-                                className="w-full h-full"
-                                allowFullScreen
-                                allow="autoplay; fullscreen; picture-in-picture"
-                            />
-                        </div>
-
-                        {showServerButton && (
-                            <button
-                                onClick={handleServerToggle}
-                                className="absolute top-4 left-4 px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg font-semibold transition-all flex items-center gap-2 shadow-lg z-10"
-                            >
-                                <RefreshCw className="w-4 h-4" />
-                                {server === 'videasy' ? 'Trocar p/ Vidking' : 'Trocar p/ Videasy'}
-                            </button>
-                        )}
-                    </div>
-                )}
-            </div>
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8 bg-black/95 backdrop-blur-xl animate-in fade-in duration-300">
+      {/* Background Decorativo */}
+      {item.backdropUrl && (
+        <div className="absolute inset-0 z-[-1] opacity-20 overflow-hidden">
+          <Image
+            src={item.backdropUrl.startsWith('http') ? item.backdropUrl : `https://image.tmdb.org/t/p/original${item.backdropUrl}`}
+            alt=""
+            fill
+            className="object-cover blur-3xl scale-110"
+            priority
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-black via-transparent to-black" />
         </div>
-    );
+      )}
+
+      {/* Botão Fechar */}
+      <Button
+        variant="glass"
+        size="icon"
+        onClick={onClose}
+        className="absolute top-6 right-6 rounded-full transition-all hover:rotate-90 z-[110] p-3"
+      >
+        <X className="w-6 h-6 text-white" />
+      </Button>
+
+      <div className="w-full max-w-7xl h-full flex flex-col gap-6 overflow-y-auto custom-scrollbar pr-2">
+        {/* Header/Info */}
+        <div className="flex flex-col md:flex-row gap-6 mt-12 md:mt-0">
+          <div className="flex-1 space-y-4">
+            <h2 className="text-3xl md:text-5xl font-bold text-white tracking-tight">
+              {item.title || item.name}
+            </h2>
+            
+            <div className="flex flex-wrap items-center gap-4 text-gray-400 text-sm md:text-base">
+              {details?.release_date && (
+                <span className="flex items-center gap-1.5 bg-white/5 px-3 py-1 rounded-full border border-white/10">
+                  <Calendar className="w-4 h-4 text-purple-400" />
+                  {new Date(details.release_date).getFullYear()}
+                </span>
+              )}
+              {details?.runtime && (
+                <span className="flex items-center gap-1.5 bg-white/5 px-3 py-1 rounded-full border border-white/10">
+                  <Clock className="w-4 h-4 text-purple-400" />
+                  {details.runtime} min
+                </span>
+              )}
+              <span className="flex items-center gap-1.5 bg-white/5 px-3 py-1 rounded-full border border-white/10">
+                <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
+                {details?.vote_average?.toFixed(1) || 'N/A'}
+              </span>
+              <span className="px-3 py-1 rounded-full border border-white/10 bg-purple-500/10 text-purple-400 font-bold uppercase tracking-wider text-xs">
+                {item.tmdbMediaType === 'tv' ? 'Série' : 'Filme'}
+              </span>
+            </div>
+
+            <p className="text-gray-300 text-base md:text-lg leading-relaxed max-w-3xl line-clamp-3 md:line-clamp-none">
+              {item.overview}
+            </p>
+          </div>
+        </div>
+
+        {/* Player Area */}
+        <div className="relative group/player">
+          {(!isTV || !showEpisodeSelector) && (
+            <PlayerFrame 
+              playerUrl={playerUrl} 
+              onMouseEnter={() => setIsHovering(true)}
+              onMouseLeave={() => setIsHovering(false)}
+            >
+              <ServerToggle 
+                server={server} 
+                onToggle={() => setServer(server === 'videasy' ? 'vidking' : 'videasy')} 
+              />
+              
+              {isTV && (
+                <Button
+                  variant="outline-purple"
+                  onClick={() => setShowEpisodeSelector(true)}
+                  className="absolute top-4 right-4 bg-black/40 hover:bg-black/60 backdrop-blur-md"
+                >
+                  Selecionar Episódio
+                </Button>
+              )}
+            </PlayerFrame>
+          )}
+
+          {/* Seletor de Episódios */}
+          {isTV && showEpisodeSelector && tvDetails && (
+            <div className="bg-zinc-900/50 backdrop-blur-xl rounded-2xl border border-white/10 p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold flex items-center gap-2">
+                  <Layout className="w-5 h-5 text-purple-500" />
+                  Episódios
+                </h3>
+              </div>
+              <EpisodeSelector
+                showId={item.id}
+                onSelect={(season, ep) => {
+                  setSelectedSeason(season);
+                  setSelectedEpisode(ep);
+                  setShowEpisodeSelector(false);
+                }}
+                onClose={() => setShowEpisodeSelector(false)}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Footer/Elenco */}
+        {details?.credits?.cast && (
+          <div className="space-y-4">
+            <h4 className="text-lg font-semibold flex items-center gap-2 text-white/80">
+              <Users className="w-5 h-5 text-purple-500" />
+              Elenco Principal
+            </h4>
+            <div className="flex gap-4 overflow-x-auto pb-4 custom-scrollbar">
+              {details.credits.cast.slice(0, 10).map((person: any) => (
+                <div key={person.id} className="flex-shrink-0 w-24 md:w-32 group">
+                  <div className="relative aspect-[2/3] rounded-xl overflow-hidden bg-zinc-800 mb-2 border border-white/10 group-hover:border-purple-500/50 transition-colors">
+                    <Image
+                      src={person.profile_path ? `https://image.tmdb.org/t/p/w185${person.profile_path}` : '/placeholder-actor.jpg'}
+                      alt={person.name}
+                      fill
+                      className="object-cover group-hover:scale-110 transition-transform duration-500"
+                    />
+                  </div>
+                  <p className="text-xs md:text-sm font-medium text-white truncate">{person.name}</p>
+                  <p className="text-[10px] md:text-xs text-gray-400 truncate">{person.character}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 };
 
 export default VideoPlayerModal;

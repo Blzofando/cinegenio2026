@@ -3,7 +3,8 @@
 "use client";
 
 import React from 'react';
-import Modal from '../shared/modal';
+import { ModalWrapper, ModalHeader, ModalBody } from '../ui/Modal';
+import { Button } from '../ui/Button';
 
 type SortType = 'addedAt-desc' | 'addedAt-asc' | 'title-asc' | 'title-desc';
 
@@ -16,8 +17,6 @@ interface FilterModalProps {
 }
 
 const FilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, tempSortType, setTempSortType, onApply }) => {
-    if (!isOpen) return null;
-    
     const sortOptions: {id: SortType, label: string}[] = [
         {id: 'addedAt-desc', label: 'Mais Recentes'},
         {id: 'addedAt-asc', label: 'Mais Antigos'},
@@ -26,25 +25,34 @@ const FilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, tempSortType
     ];
 
     return (
-        <Modal onClose={onClose}>
-            <div className="p-6">
-                <h2 className="text-2xl font-bold text-white mb-6">Filtros e Ordenação</h2>
+        <ModalWrapper isOpen={isOpen} onClose={onClose} size="sm">
+            <ModalHeader title="Filtros e Ordenação" onClose={onClose} />
+            <ModalBody>
                 <div className="space-y-6">
                     <div>
-                        <h3 className="font-semibold text-gray-300 mb-3">Ordenar por</h3>
-                        <div className="flex flex-wrap gap-2">
+                        <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wider mb-4">Ordenar por</h3>
+                        <div className="grid grid-cols-2 gap-2">
                             {sortOptions.map(opt => (
-                                <button key={opt.id} onClick={() => setTempSortType(opt.id)} className={`px-3 py-2 text-sm rounded-lg transition-colors ${tempSortType === opt.id ? 'bg-indigo-600 text-white' : 'bg-gray-700 hover:bg-gray-600'}`}>{opt.label}</button>
+                                <Button 
+                                    key={opt.id} 
+                                    variant={tempSortType === opt.id ? "primary" : "outline"}
+                                    size="sm"
+                                    onClick={() => setTempSortType(opt.id)}
+                                    className="justify-center"
+                                >
+                                    {opt.label}
+                                </Button>
                             ))}
                         </div>
                     </div>
                 </div>
-                <div className="mt-8 pt-4 border-t border-gray-700 flex justify-end">
-                    <button onClick={onApply} className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-lg">Aplicar</button>
+                <div className="mt-8 flex justify-end gap-3">
+                    <Button variant="ghost" onClick={onClose}>Cancelar</Button>
+                    <Button variant="primary" onClick={onApply} className="px-8">Aplicar</Button>
                 </div>
-            </div>
-        </Modal>
+            </ModalBody>
+        </ModalWrapper>
     );
 };
 
-export default FilterModal;
+export default FilterModal;

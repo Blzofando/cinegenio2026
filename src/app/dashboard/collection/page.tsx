@@ -9,6 +9,7 @@ import DetailsModal from '@/components/shared/DetailsModal';
 import AddModal from '@/components/shared/AddModal';
 import FilterModal from '@/components/collection/FilterModal';
 import Image from 'next/image';
+import { Button } from '@/components/ui/Button';
 
 // --- Estilos e Configurações ---
 const ratingStyles: Record<Rating, { bg: string, text: string, border: string }> = {
@@ -119,8 +120,8 @@ export default function CollectionPage() {
 
     const renderDetailsModalActions = () => (
         <>
-            <button onClick={handleRemoveItem} className="w-full sm:w-auto flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg">Remover</button>
-            <button onClick={() => setModal(null)} className="w-full sm:w-auto flex-1 bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-lg">Fechar</button>
+            <Button onClick={handleRemoveItem} className="w-full sm:w-auto flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg h-auto">Remover</Button>
+            <Button variant="ghost" onClick={() => setModal(null)} className="w-full sm:w-auto flex-1 bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-lg h-auto">Fechar</Button>
         </>
     );
 
@@ -158,7 +159,7 @@ export default function CollectionPage() {
             
             <div className="flex flex-col sm:flex-row justify-between items-center mb-6">
                 <h1 className="text-4xl font-bold text-white mb-4 sm:mb-0">Minha Coleção</h1>
-                <button onClick={() => setModal('add')} className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 shadow-lg transition-transform transform hover:scale-105">[+] Adicionar</button>
+                <Button onClick={() => setModal('add')} className="py-2 px-4 shadow-lg transition-transform transform hover:scale-105">[+] Adicionar</Button>
             </div>
 
             <div className="bg-gray-800 p-4 rounded-lg mb-8 space-y-4">
@@ -166,13 +167,25 @@ export default function CollectionPage() {
                 <div className="flex flex-col sm:flex-row gap-4 justify-between">
                     <div className="flex items-center gap-2 flex-wrap">
                         {ratingOptions.map(({ rating, emoji }) => (
-                            <button key={rating} onClick={() => setActiveRatingFilter(prev => prev === rating ? null : rating)} title={rating} className={`px-3 py-2 text-xl rounded-lg transition-all duration-300 ${activeRatingFilter === rating ? 'bg-indigo-600 ring-2 ring-indigo-400 scale-110' : 'bg-gray-700 hover:bg-gray-600'}`}>{emoji}</button>
+                            <Button 
+                                key={rating} 
+                                variant="ghost"
+                                onClick={() => setActiveRatingFilter(prev => prev === rating ? null : rating)} 
+                                title={rating} 
+                                className={`px-3 py-2 text-xl rounded-lg transition-all duration-300 h-auto ${activeRatingFilter === rating ? 'bg-indigo-600 ring-2 ring-indigo-400 scale-110' : 'bg-gray-700 hover:bg-gray-600'}`}
+                            >
+                                {emoji}
+                            </Button>
                         ))}
                     </div>
-                    <button onClick={openFilterModal} className="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center sm:justify-start gap-2">
+                    <Button 
+                        variant="ghost"
+                        onClick={openFilterModal} 
+                        className="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 flex items-center justify-center sm:justify-start gap-2 h-auto"
+                    >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 12.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-4.586L3.293 6.707A1 1 0 013 6V3z" clipRule="evenodd" /></svg>
                           Filtros & Ordenação
-                    </button>
+                    </Button>
                 </div>
             </div>
 

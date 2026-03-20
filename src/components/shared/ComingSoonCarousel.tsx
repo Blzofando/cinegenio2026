@@ -7,7 +7,9 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { RadarItem, DisplayableItem } from '@/types';
 import EnhancedDetailsModal from './EnhancedDetailsModal';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { Button } from '@/components/ui/Button';
+import { CarouselArrows } from './CarouselArrows';
+import { ComingSoonSkeleton } from './skeletons/ComingSoonSkeleton';
 
 interface ComingSoonCarouselProps {
     type?: 'all' | 'movie' | 'tv';
@@ -71,20 +73,7 @@ const ComingSoonCarousel: React.FC<ComingSoonCarouselProps> = ({ type = 'all', c
     };
 
     if (isLoading) {
-        return (
-            <div className="mb-8 md:mb-10">
-                <div className="flex justify-between items-center mb-3 md:mb-4 px-4 md:px-6 lg:px-8 xl:px-12">
-                    <div className="h-6 md:h-8 w-48 md:w-64 bg-gray-800 animate-pulse rounded"></div>
-                </div>
-                <div className="flex gap-2 sm:gap-3 md:gap-5 lg:gap-6 overflow-hidden px-4 md:px-6 lg:px-8 xl:px-12">
-                    {Array.from({ length: 6 }).map((_, i) => (
-                        <div key={i} className="flex-shrink-0 w-28 sm:w-32 md:w-40 lg:w-48">
-                            <div className="aspect-[2/3] bg-gray-800 animate-pulse rounded-lg"></div>
-                        </div>
-                    ))}
-                </div>
-            </div>
-        );
+        return <ComingSoonSkeleton variant="carousel" />;
     }
 
     if (items.length === 0) {
@@ -97,8 +86,7 @@ const ComingSoonCarousel: React.FC<ComingSoonCarouselProps> = ({ type = 'all', c
                 {/* Title */}
                 <div className="flex justify-between items-center mb-3 md:mb-4 px-4 md:px-6 lg:px-8 xl:px-12">
                     <div className="flex items-center gap-3">
-                        <div className="h-6 md:h-8 w-1 bg-purple-500"></div>
-                        <h2 className="text-lg sm:text-xl md:text-2xl font-bold">EM BREVE</h2>
+                        <h2 className="text-lg sm:text-xl md:text-2xl font-bold uppercase tracking-tight">Em Breve</h2>
                     </div>
                     {categoryUrl && (
                         <a
@@ -119,35 +107,26 @@ const ComingSoonCarousel: React.FC<ComingSoonCarouselProps> = ({ type = 'all', c
                     onMouseEnter={() => setShowArrows(true)}
                     onMouseLeave={() => setShowArrows(false)}
                 >
-                    {showArrows && (
-                        <>
-                            <button
-                                onClick={() => scroll('left')}
-                                className="absolute left-0 top-0 bottom-4 z-20 w-16 flex items-center justify-center bg-gradient-to-r from-black/80 to-transparent hover:from-black/90 transition-all"
-                            >
-                                <ChevronLeft className="w-8 h-8 text-white drop-shadow-lg" />
-                            </button>
-                            <button
-                                onClick={() => scroll('right')}
-                                className="absolute right-0 top-0 bottom-4 z-20 w-16 flex items-center justify-center bg-gradient-to-l from-black/80 to-transparent hover:from-black/90 transition-all"
-                            >
-                                <ChevronRight className="w-8 h-8 text-white drop-shadow-lg" />
-                            </button>
-                        </>
-                    )}
+                    <CarouselArrows 
+                        onPrev={() => scroll('left')} 
+                        onNext={() => scroll('right')} 
+                        show={showArrows} 
+                    />
 
                     <div
                         ref={scrollRef}
-                        className="flex gap-2 sm:gap-3 md:gap-5 lg:gap-6 overflow-x-auto pb-4 scrollbar-hide scroll-smooth snap-x snap-mandatory px-4 md:px-6 lg:px-8 xl:px-12"
+                        className="flex gap-2 sm:gap-3 md:gap-5 lg:gap-6 overflow-x-auto pb-4 scrollbar-hide scroll-smooth snap-x snap-mandatory px-0"
                     >
+                        {/* Left Spacer */}
+                        <div className="flex-shrink-0 w-2 md:w-1 lg:w-2 xl:w-6 snap-start" />
+
                         {items.map((item, index) => (
                             <div
                                 key={`${item.id}-${index}`}
                                 className="flex-shrink-0 group/item snap-start w-28 sm:w-32 md:w-40 lg:w-48"
                             >
                                 <div
-                                    className="relative overflow-hidden rounded-lg shadow-lg"
-                                    style={{ aspectRatio: '2/3' }}
+                                    className="relative overflow-hidden rounded-lg shadow-lg aspect-[2/3]"
                                 >
                                     {/* Poster */}
                                     <Image
@@ -195,6 +174,9 @@ const ComingSoonCarousel: React.FC<ComingSoonCarouselProps> = ({ type = 'all', c
                                 </div>
                             </div>
                         ))}
+                        
+                         {/* Right Spacer */}
+                         <div className="flex-shrink-0 w-4 md:w-6 lg:w-8 xl:w-12" />
                     </div>
                 </div>
             </div>

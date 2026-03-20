@@ -12,6 +12,9 @@ import Image from 'next/image';
 import { TMDbSearchResult } from '@/types';
 import EnhancedDetailsModal from '@/components/shared/EnhancedDetailsModal';
 import { ChevronLeft } from 'lucide-react';
+import { Button } from '@/components/ui/Button';
+import { MediaGridSkeleton } from '@/components/shared/skeletons/MediaGridSkeleton';
+import { Skeleton } from '@/components/ui/Skeleton';
 
 export default function TVCategoryPage() {
     const params = useParams();
@@ -90,11 +93,15 @@ export default function TVCategoryPage() {
 
     if (isLoading) {
         return (
-            <div className="min-h-screen bg-gradient-to-b from-black via-gray-900 to-black text-white pb-16 md:pb-0">
+            <div className="min-h-screen bg-black text-white pb-16 md:pb-0">
                 <DashboardHeader />
                 <MobileBottomNav />
-                <div className="flex items-center justify-center h-96">
-                    <div className="w-16 h-16 border-t-4 border-purple-500 border-solid rounded-full animate-spin"></div>
+                <div className="container mx-auto px-4 py-8">
+                    <div className="mb-8">
+                         <Skeleton className="h-4 w-20 mb-4" /> {/* Botão Voltar */}
+                         <Skeleton className="h-10 w-64 mb-2" /> {/* Título */}
+                    </div>
+                    <MediaGridSkeleton itemCount={12} />
                 </div>
             </div>
         );
@@ -108,13 +115,14 @@ export default function TVCategoryPage() {
             <div className="container mx-auto px-4 py-8">
                 {/* Header */}
                 <div className="mb-8">
-                    <button
+                    <Button
+                        variant="ghost"
                         onClick={() => router.back()}
-                        className="flex items-center text-gray-400 hover:text-white transition-colors mb-4"
+                        className="flex items-center text-gray-400 hover:text-white transition-colors mb-4 p-0 h-auto"
                     >
                         <ChevronLeft className="w-5 h-5 mr-1" />
                         Voltar
-                    </button>
+                    </Button>
                     <h1 className="text-4xl font-black text-white mb-2">
                         {categoryTitles[category] || 'Séries'}
                     </h1>
@@ -169,12 +177,13 @@ export default function TVCategoryPage() {
                 {/* Manual Load More Button fallback */}
                 {hasMore && items.length > 0 && (
                     <div className="flex justify-center py-8">
-                        <button
+                        <Button
                             onClick={fetchMore}
-                            className="px-6 py-2 bg-purple-600 hover:bg-purple-700 rounded-full text-white font-semibold transition-colors shadow-lg"
+                            size="lg"
+                            className="bg-purple-600 hover:bg-purple-700 rounded-full px-8"
                         >
                             Carregar Mais Séries
-                        </button>
+                        </Button>
                     </div>
                 )}
             </div>

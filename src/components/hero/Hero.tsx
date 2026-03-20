@@ -27,23 +27,22 @@ export default function Hero() {
   return (
     <section
       ref={heroRef}
-      className={`hero ${hidden ? "hero--hidden" : "hero--visible"}`}
-      style={{ position: "relative" }}
+      className={`hero ${hidden ? "hero--hidden" : "hero--visible"} relative`}
       aria-label="Hero CineGênio"
     >
       {/* badge no canto superior direito */}
-      <div style={{ position: "absolute", right: 14, top: 8, zIndex: 30 }}>
+      <div className="absolute right-3.5 top-2 z-30">
         <LevelBadge level={7} />
       </div>
 
       {/* conteúdo esquerdo: título + frase (SEM CTA aqui) */}
-      <div className="hero-left" style={{ maxWidth: "62%" }}>
-        <div className="hero-title text-neon" style={{ lineHeight: 1 }}>
-          <div style={{ fontWeight: 900, fontSize: "64px" }}>CineGênio</div>
-          <div className="subtitle" style={{ fontSize: 22, marginTop: 6 }}>Pessoal</div>
+      <div className="hero-left max-w-[62%]">
+        <div className="hero-title text-neon leading-none">
+          <div className="font-[900] text-[64px]">CineGênio</div>
+          <div className="subtitle text-[22px] mt-1.5">Pessoal</div>
         </div>
 
-        <div className="hero-sub" style={{ marginTop: 10 }}>Seu assistente de cinema.</div>
+        <div className="hero-sub mt-2.5">Seu assistente de cinema.</div>
       </div>
 
       {/* decor direita: CLAQUETE maior (aumentei pra 220) */}
@@ -53,7 +52,7 @@ export default function Hero() {
           alt="Claquete"
           width={220}
           height={220}
-          style={{ borderRadius: 12 }}
+          className="rounded-xl"
           priority={false}
         />
       </div>

@@ -5,6 +5,7 @@ import { Home, Film, Tv, Search, User, Sparkles } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import SearchBar from './SearchBar';
+import { Button } from '@/components/ui/Button';
 
 const MobileBottomNav: React.FC = () => {
     const pathname = usePathname();
@@ -50,13 +51,14 @@ const MobileBottomNav: React.FC = () => {
                     })}
 
                     {/* Search Button */}
-                    <button
+                     <Button
+                        variant="ghost"
                         onClick={() => setShowSearchModal(true)}
-                        className="flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-all text-gray-400 hover:text-white"
+                        className="flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-all text-gray-400 hover:text-white h-auto p-0 min-w-0"
                     >
                         <Search className="w-6 h-6 stroke-2" />
                         <span className="text-[10px] font-medium">Buscar</span>
-                    </button>
+                    </Button>
 
                     {/* AI Chat Button */}
                     <Link
@@ -83,14 +85,16 @@ const MobileBottomNav: React.FC = () => {
                 <div className="md:hidden fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm">
                     <div className="absolute top-0 left-0 right-0 p-4 bg-black/95 backdrop-blur-xl border-b border-white/10">
                         <div className="flex items-center gap-3">
-                            <button
+                             <Button
+                                variant="ghost"
+                                size="icon"
                                 onClick={() => setShowSearchModal(false)}
-                                className="text-gray-400 hover:text-white"
+                                className="text-gray-400 hover:text-white p-0 h-auto w-auto"
                             >
                                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                 </svg>
-                            </button>
+                            </Button>
                             <div className="flex-1">
                                 <SearchBar />
                             </div>

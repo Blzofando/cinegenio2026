@@ -6,6 +6,7 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { TMDbSearchResult } from '@/types';
 import { searchTMDb } from '@/lib/tmdb';
 import Image from 'next/image';
+import { Button } from '@/components/ui/Button';
 
 interface TitleSelectorProps {
     onTitleSelect: (selection: TMDbSearchResult | null) => void;
@@ -62,9 +63,13 @@ const TitleSelector: React.FC<TitleSelectorProps> = ({ onTitleSelect, label }) =
                     <div className="flex-grow text-left">
                         <p className="font-bold text-white text-lg">{selectedTitle.title || selectedTitle.name}</p>
                         <p className="text-sm text-gray-400">{selectedTitle.media_type === 'movie' ? 'Filme' : 'Série'} ({new Date(selectedTitle.release_date || selectedTitle.first_air_date || '').getFullYear()})</p>
-                        <button type="button" onClick={handleReset} className="text-xs text-indigo-400 hover:underline mt-2">
+                         <Button 
+                            variant="ghost" 
+                            onClick={handleReset} 
+                            className="text-xs text-indigo-400 hover:underline mt-2 p-0 h-auto min-w-0"
+                        >
                             Trocar
-                        </button>
+                        </Button>
                     </div>
                 </div>
             </div>

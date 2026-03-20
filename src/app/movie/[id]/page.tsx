@@ -14,6 +14,7 @@ import CombinedPlayButton from '@/components/shared/CombinedPlayButton';
 import { WatchlistContext } from '@/contexts/WatchlistContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { checkWatchedStatus, RatingHistory, RatingType } from '@/lib/watchedService';
+import MediaDetailsSkeleton from '@/components/shared/skeletons/MediaDetailsSkeleton';
 
 interface MoviePageProps {
     params: Promise<{ id: string }>;
@@ -80,11 +81,7 @@ export default function MoviePage({ params }: MoviePageProps) {
     }, [user, resolvedId, watchStatus]);
 
     if (isLoading || !movieData) {
-        return (
-            <div className="min-h-screen bg-black flex items-center justify-center">
-                <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-purple-600"></div>
-            </div>
-        );
+        return <MediaDetailsSkeleton variant="page" />;
     }
 
     const title = movieData.title || movieData.name || 'Título Desconhecido';
@@ -108,6 +105,7 @@ export default function MoviePage({ params }: MoviePageProps) {
         title: title,
         name: title,
         posterUrl: posterUrl,
+        backdropUrl: backdropUrl,
     };
 
     return (
@@ -155,8 +153,7 @@ export default function MoviePage({ params }: MoviePageProps) {
                                     alt={title}
                                     width={400}
                                     height={150}
-                                    className="max-h-[60px] md:max-h-[80px] lg:max-h-[96px] w-auto object-contain"
-                                    style={{ filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.8))' }}
+                                    className="max-h-[60px] md:max-h-[80px] lg:max-h-[96px] w-auto object-contain drop-shadow-[0_4px_8px_rgba(0,0,0,0.8)]"
                                 />
                             </div>
                         ) : (
@@ -377,12 +374,11 @@ export default function MoviePage({ params }: MoviePageProps) {
             </div>
 
             {/* Video Player Modal */}
-            {showPlayer && (
-                <VideoPlayerModal
-                    item={displayableItem}
-                    onClose={() => setShowPlayer(false)}
-                />
-            )}
+            <VideoPlayerModal
+                item={displayableItem}
+                isOpen={showPlayer}
+                onClose={() => setShowPlayer(false)}
+            />
         </div>
     );
 }

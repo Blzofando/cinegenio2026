@@ -7,6 +7,8 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { RadarItem, DisplayableItem } from '@/types';
 import EnhancedDetailsModal from './EnhancedDetailsModal';
+import { Button } from '@/components/ui/Button';
+import { ComingSoonSkeleton } from './skeletons/ComingSoonSkeleton';
 
 interface ComingSoonSectionProps {
     type: 'movie' | 'tv';
@@ -78,18 +80,7 @@ const ComingSoonSection: React.FC<ComingSoonSectionProps> = ({ type }) => {
     };
 
     if (isLoading) {
-        return (
-            <div className="mb-8 md:mb-10">
-                <div className="flex justify-between items-center mb-3 md:mb-4 px-4 md:px-6 lg:px-8 xl:px-12">
-                    <div className="h-6 md:h-8 w-48 md:w-64 bg-gray-800 animate-pulse rounded"></div>
-                </div>
-                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-2 sm:gap-3 md:gap-4 px-4 md:px-6 lg:px-8 xl:px-12">
-                    {Array.from({ length: 20 }).map((_, i) => (
-                        <div key={i} className="aspect-[2/3] bg-gray-800 animate-pulse rounded-lg"></div>
-                    ))}
-                </div>
-            </div>
-        );
+        return <ComingSoonSkeleton variant="grid" />;
     }
 
     if (allItems.length === 0) {
@@ -110,8 +101,7 @@ const ComingSoonSection: React.FC<ComingSoonSectionProps> = ({ type }) => {
                             className="group/item"
                         >
                             <div
-                                className="relative overflow-hidden rounded-lg shadow-lg cursor-pointer"
-                                style={{ aspectRatio: '2/3' }}
+                                className="relative overflow-hidden rounded-lg shadow-lg cursor-pointer aspect-[2/3]"
                             >
                                 {/* Poster */}
                                 <Image
@@ -164,12 +154,13 @@ const ComingSoonSection: React.FC<ComingSoonSectionProps> = ({ type }) => {
                 {/* Carregar Mais button */}
                 {displayedItems.length < allItems.length && (
                     <div className="flex justify-center mt-6">
-                        <button
+                        <Button
+                            variant="primary"
                             onClick={handleLoadMore}
-                            className="px-8 py-3 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-full transition-all duration-200 transform hover:scale-105"
+                            className="px-8 py-3 font-bold rounded-full transition-all duration-200 transform hover:scale-105 h-auto text-base"
                         >
                             Carregar Mais
-                        </button>
+                        </Button>
                     </div>
                 )}
             </div>

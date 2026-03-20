@@ -5,6 +5,7 @@ import { Recommendation, WatchlistItem, ManagedWatchedItem } from '@/types';
 import { WatchedDataContext } from '@/contexts/WatchedDataContext';
 import { WatchlistContext } from '@/contexts/WatchlistContext';
 import Image from 'next/image';
+import { Button } from '@/components/ui/Button';
 
 type RecommendationCardProps = {
     recommendation: Recommendation;
@@ -59,9 +60,19 @@ const RecommendationCard = ({ recommendation, onAddToWatchlist: onAddToWatchlist
 
     return (
         <div className="mt-8 w-full max-w-4xl mx-auto animate-fade-in">
-            <div className="relative bg-gray-900 rounded-xl shadow-2xl overflow-hidden border border-gray-700">
-                {posterUrl && <div className="absolute inset-0 bg-cover bg-center transition-all duration-500" style={{ backgroundImage: `url(${posterUrl})` }} />}
-                <div className="absolute inset-0 bg-black/60 backdrop-blur-lg" />
+            <div className="relative bg-gray-900 rounded-xl shadow-2xl overflow-hidden border border-gray-700 aspect-[16/9] md:aspect-auto">
+                {posterUrl && (
+                    <div className="absolute inset-0 transition-all duration-500">
+                        <Image 
+                            src={posterUrl} 
+                            alt="" 
+                            fill 
+                            className="object-cover opacity-30"
+                            sizes="100vw"
+                        />
+                    </div>
+                )}
+                <div className="absolute inset-0 bg-black/40 backdrop-blur-md" />
 
                 <div className="relative p-6 sm:p-8 grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
                     <div className="md:col-span-1 flex justify-center items-start">
@@ -103,7 +114,10 @@ const RecommendationCard = ({ recommendation, onAddToWatchlist: onAddToWatchlist
                                             <div key={key} className="flex items-center">
                                                 <span className="w-24 text-sm text-gray-300 capitalize">{key === 'naoGostei' ? 'Não Gostei' : key}</span>
                                                 <div className="flex-1 bg-white/10 rounded-full h-5 overflow-hidden">
-                                                    <div className={`${probabilityColors[key]} h-full flex items-center justify-end text-xs font-bold pr-2 text-white transition-all duration-500`} style={{ width: `${value}%` }}>
+                                                    <div 
+                                                        className={`${probabilityColors[key]} h-full flex items-center justify-end text-xs font-bold pr-2 text-white transition-all duration-500`} 
+                                                        style={{ width: `${value}%` }}
+                                                    >
                                                         {value > 10 ? `${value}%` : ''}
                                                     </div>
                                                 </div>
@@ -115,10 +129,15 @@ const RecommendationCard = ({ recommendation, onAddToWatchlist: onAddToWatchlist
                         )}
                         
                         {showSaveButton && (
-                            <div className="mt-8">
-                                <button onClick={handleSaveToWatchlist} className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg text-lg transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg">
+                             <div className="mt-8">
+                                <Button 
+                                    variant="primary"
+                                    size="xl"
+                                    onClick={handleSaveToWatchlist} 
+                                    className="w-full transition-all duration-300 transform hover:scale-[1.02] shadow-lg"
+                                >
                                     + Salvar na Lista para Ver
-                                </button>
+                                </Button>
                             </div>
                         )}
                     </div>

@@ -8,6 +8,7 @@ import { DuelResult, TMDbSearchResult } from '@/types';
 import { getDuelAnalysis } from '@/lib/recommendations';
 import TitleSelector from '@/components/shared/TitleSelector';
 import Image from 'next/image';
+import { Button } from '@/components/ui/Button';
 
 // --- Componente de Animação da Batalha ---
 interface BattleAnimationProps {
@@ -74,9 +75,9 @@ const WinnerDisplay: React.FC<WinnerDisplayProps> = ({ result, onReset }) => {
                 <h3 className="text-xl font-bold text-green-400 mb-2">Veredito do Gênio</h3>
                 <p className="text-gray-300 italic text-center">{result.verdict}</p>
             </div>
-            <button onClick={onReset} className="mt-8 bg-gray-600 hover:bg-gray-500 text-white font-bold py-3 px-8 rounded-lg text-lg transition-colors">
+            <Button variant="ghost" onClick={onReset} className="mt-8 bg-gray-600 hover:bg-gray-500 py-3 px-8 text-lg">
                 Novo Duelo
-            </button>
+            </Button>
         </div>
     );
 };
@@ -143,9 +144,13 @@ export default function DuelPage() {
                         <TitleSelector label="Desafiante 1" onTitleSelect={setTitle1} />
                         <TitleSelector label="Desafiante 2" onTitleSelect={setTitle2} />
                     </div>
-                    <button onClick={handleDuel} disabled={!title1 || !title2} className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-12 rounded-lg text-xl transition-all duration-300 transform hover:scale-105 shadow-lg disabled:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <Button 
+                        onClick={handleDuel} 
+                        disabled={!title1 || !title2} 
+                        className="py-3 px-12 text-xl transform hover:scale-105 shadow-lg"
+                    >
                         Iniciar Duelo
-                    </button>
+                    </Button>
                     {error && <p className="mt-8 text-red-400 bg-red-900/50 p-4 rounded-lg w-full max-w-2xl">{error}</p>}
                 </>
             )}

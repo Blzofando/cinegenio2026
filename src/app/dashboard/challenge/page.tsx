@@ -11,14 +11,10 @@ import { Challenge, ChallengeStep, WatchlistItem } from '@/types';
 import { generateNewWeeklyChallenge, updateChallenge } from '@/lib/challenge';
 import DetailsModal from '@/components/shared/DetailsModal';
 import Image from 'next/image';
+import { Button } from '@/components/ui/Button';
+import { MediaGridSkeleton } from '@/components/shared/skeletons/MediaGridSkeleton';
 
 // --- Componentes Internos ---
-const LoadingSpinner = () => (
-    <div className="flex flex-col items-center justify-center space-y-2 mt-8">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-400"></div>
-        <span className="text-lg text-gray-400">O Gênio está a preparar o seu desafio...</span>
-    </div>
-);
 
 interface StepCardProps {
     step: ChallengeStep;
@@ -119,25 +115,26 @@ export default function ChallengePage() {
 
         return (
             <>
-                <button 
+                <Button 
                     onClick={() => handleToggleStep(index)} 
-                    className={`w-full sm:w-auto flex-1 font-bold py-2 px-4 rounded-lg text-white ${step.completed ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-green-600 hover:bg-green-700'}`}
+                    className={`w-full sm:w-auto flex-1 font-bold h-10 ${step.completed ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-green-600 hover:bg-green-700'}`}
                 >
                     {step.completed ? 'Desmarcar Conclusão' : 'Marcar como Concluído'}
-                </button>
-                <button 
+                </Button>
+                <Button 
                     onClick={() => handleAddToWatchlist(step)} 
                     disabled={isItemInWatchlist} 
-                    className="w-full sm:w-auto flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg disabled:bg-gray-600 disabled:cursor-not-allowed"
+                    className="w-full sm:w-auto flex-1 bg-blue-600 hover:bg-blue-700 h-10"
                 >
                     {isItemInWatchlist ? 'Já na Watchlist' : 'Adicionar à Watchlist'}
-                </button>
-                <button 
+                </Button>
+                <Button 
+                    variant="ghost"
                     onClick={() => setSelectedItem(null)} 
-                    className="w-full sm:w-auto bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-lg"
+                    className="w-full sm:w-auto bg-gray-600 hover:bg-gray-500 h-10"
                 >
                     Fechar
-                </button>
+                </Button>
             </>
         );
     };
@@ -149,7 +146,11 @@ export default function ChallengePage() {
                 Expanda os seus horizontes com uma nova sugestão a cada semana!
             </p>
 
-            {isLoading && <LoadingSpinner />}
+            {isLoading && (
+                <div className="w-full max-w-4xl mt-8">
+                    <MediaGridSkeleton itemCount={5} />
+                </div>
+            )}
             {error && <p className="mt-8 text-red-400 bg-red-900/50 p-4 rounded-lg">{error}</p>}
             
             {selectedItem && (

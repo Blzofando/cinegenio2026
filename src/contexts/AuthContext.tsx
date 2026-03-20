@@ -13,10 +13,12 @@ import {
     updateProfile
 } from 'firebase/auth';
 import { auth } from '@/lib/firebase/client';
-import { createUserProfile } from '@/lib/users';
+import { createUserProfile, getUserProfile } from '@/lib/users';
+import { UserProfile } from '@/types';
 
 interface AuthContextType {
     user: User | null;
+    userProfile: UserProfile | null;
     loading: boolean;
     error: string | null;
     signUp: (email: string, password: string, name: string, username: string) => Promise<void>;
@@ -27,6 +29,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType>({
     user: null,
+    userProfile: null,
     loading: true,
     error: null,
     signUp: async () => { },
@@ -65,12 +68,24 @@ export const validatePassword = (password: string): { valid: boolean; errors: st
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [user, setUser] = useState<User | null>(null);
+    const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, (user) => {
-            setUser(user);
+        const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+            if (firebaseUser) {
+                setUser(firebaseUser);
+                try {
+                    const profile = await getUserProfile(firebaseUser.uid);
+                    setUserProfile(profile);
+                } catch (err) {
+                    console.error('Erro ao buscar perfil:', err);
+                }
+            } else {
+                setUser(null);
+                setUserProfile(null);
+            }
             setLoading(false);
         });
 
@@ -102,6 +117,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             // Enviar email de verificação
             await sendEmailVerification(userCredential.user);
 
+            const profile = await getUserProfile(userCredential.user.uid);
+            setUserProfile(profile);
             setUser(userCredential.user);
         } catch (err: any) {
             console.error('Erro no cadastro:', err);
@@ -131,6 +148,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             setLoading(true);
 
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
+            const profile = await getUserProfile(userCredential.user.uid);
+            setUserProfile(profile);
             setUser(userCredential.user);
         } catch (err: any) {
             console.error('Erro no login:', err);
@@ -158,6 +177,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             setError(null);
             await firebaseSignOut(auth);
             setUser(null);
+            setUserProfile(null);
         } catch (err: any) {
             console.error('Erro ao fazer logout:', err);
             setError('Erro ao fazer logout.');
@@ -169,6 +189,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const value = {
         user,
+        userProfile,
         loading,
         error,
         signUp,

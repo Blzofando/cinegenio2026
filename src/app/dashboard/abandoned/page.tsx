@@ -8,6 +8,7 @@ import DashboardHeader from '@/components/shared/DashboardHeader';
 import Image from 'next/image';
 import { XCircle, RotateCcw, Trash2 } from 'lucide-react';
 import { resumeDropped, removeDropped } from '@/lib/droppedService';
+import { Button } from '@/components/ui/Button';
 
 interface DroppedItem {
     id: number;
@@ -134,22 +135,23 @@ export default function DroppedPage() {
                                     {/* Overlay com ações */}
                                     <div className="absolute inset-0 bg-black/80 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-center gap-3 p-4">
                                         {/* Retomar */}
-                                        <button
+                                        <Button
                                             onClick={() => handleResume(item)}
-                                            className="w-full bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg font-semibold flex items-center justify-center gap-2 transition-colors"
+                                            className="w-full bg-green-600 hover:bg-green-700 h-10"
                                         >
                                             <RotateCcw className="w-4 h-4" />
                                             Retomar
-                                        </button>
+                                        </Button>
 
                                         {/* Remover */}
-                                        <button
+                                        <Button
+                                            variant="ghost"
                                             onClick={() => handleRemove(item)}
-                                            className="w-full bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white py-2 px-4 rounded-lg font-semibold flex items-center justify-center gap-2 transition-colors"
+                                            className="w-full bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white h-10"
                                         >
                                             <Trash2 className="w-4 h-4" />
                                             Remover
-                                        </button>
+                                        </Button>
                                     </div>
 
                                     {/* Badge de motivo */}

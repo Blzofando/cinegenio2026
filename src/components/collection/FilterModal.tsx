@@ -4,6 +4,7 @@
 
 import React, { useState } from 'react';
 import Modal from '../shared/modal';
+import { Button } from '@/components/ui/Button';
 
 type SortType = 'createdAt-desc' | 'createdAt-asc' | 'title-asc' | 'title-desc';
 
@@ -28,13 +29,14 @@ const GenreSelector: React.FC<GenreSelectorProps> = ({ availableGenres, selected
             />
             <div className="max-h-40 overflow-y-auto space-y-1 p-1">
                 {filteredGenres.map(genre => (
-                    <button
+                    <Button
                         key={genre}
+                        variant="ghost"
                         onClick={() => onToggle(genre)}
-                        className={`w-full text-left px-3 py-1.5 text-sm rounded-lg transition-colors ${selectedGenres.has(genre) ? 'bg-indigo-600 text-white' : 'bg-gray-700 hover:bg-gray-600'}`}
+                        className={`w-full text-left px-3 py-1.5 text-sm rounded-lg transition-colors h-auto ${selectedGenres.has(genre) ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'bg-gray-700 hover:bg-gray-600'}`}
                     >
                         {genre}
-                    </button>
+                    </Button>
                 ))}
             </div>
         </div>
@@ -96,7 +98,14 @@ const FilterModal: React.FC<FilterModalProps> = ({
                         <h3 className="font-semibold text-gray-300 mb-3">Ordenar por</h3>
                         <div className="flex flex-wrap gap-2">
                             {sortOptions.map(opt => (
-                                <button key={opt.id} onClick={() => setTempSortType(opt.id)} className={`px-3 py-2 text-sm rounded-lg transition-colors ${tempSortType === opt.id ? 'bg-indigo-600 text-white' : 'bg-gray-700 hover:bg-gray-600'}`}>{opt.label}</button>
+                                <Button 
+                                    key={opt.id} 
+                                    variant="ghost"
+                                    onClick={() => setTempSortType(opt.id)} 
+                                    className={`px-3 py-2 text-sm rounded-lg transition-colors h-auto ${tempSortType === opt.id ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'bg-gray-700 hover:bg-gray-600'}`}
+                                >
+                                    {opt.label}
+                                </Button>
                             ))}
                         </div>
                     </div>
@@ -104,14 +113,21 @@ const FilterModal: React.FC<FilterModalProps> = ({
                         <h3 className="font-semibold text-gray-300 mb-3">Categoria</h3>
                         <div className="flex flex-wrap gap-2">
                             {availableCategories.map((cat: string) => (
-                                <button key={cat} onClick={() => handleCategoryToggle(cat)} className={`px-3 py-2 text-sm rounded-lg transition-colors ${tempSelectedCategories.has(cat) ? 'bg-indigo-600 text-white' : 'bg-gray-700 hover:bg-gray-600'}`}>{cat}</button>
+                                <Button 
+                                    key={cat} 
+                                    variant="ghost"
+                                    onClick={() => handleCategoryToggle(cat)} 
+                                    className={`px-3 py-2 text-sm rounded-lg transition-colors h-auto ${tempSelectedCategories.has(cat) ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'bg-gray-700 hover:bg-gray-600'}`}
+                                >
+                                    {cat}
+                                </Button>
                             ))}
                         </div>
                     </div>
                     <GenreSelector availableGenres={availableGenres} selectedGenres={tempSelectedGenres} onToggle={handleGenreToggle} />
                 </div>
                 <div className="mt-8 pt-4 border-t border-gray-700 flex justify-end">
-                    <button onClick={onApply} className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-lg">Aplicar</button>
+                    <Button onClick={onApply} size="lg" className="px-8">Aplicar</Button>
                 </div>
             </div>
         </Modal>

@@ -38,8 +38,7 @@ const TiltCard: React.FC<TiltCardProps> = ({ className = "", children }) => {
       ref={ref}
       onMouseMove={onMouseMove}
       onMouseLeave={onMouseLeave}
-      className={`transition-transform duration-300 ease-out will-change-transform ${className}`}
-      style={{ transformStyle: "preserve-3d" }}
+      className={`transition-transform duration-300 ease-out will-change-transform preserve-3d ${className}`}
     >
       {children}
     </div>

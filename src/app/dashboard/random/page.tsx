@@ -6,14 +6,9 @@ import React, { useState, useContext } from 'react';
 import { Recommendation } from '@/types';
 import { getRandomSuggestion } from '@/lib/recommendations';
 import { WatchedDataContext } from '@/contexts/WatchedDataContext';
-import RecommendationCard from '@/components/RecommendationCard'; // <-- Criaremos este a seguir
-
-const LoadingSpinner = () => (
-    <div className="flex flex-col items-center justify-center space-y-2">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-400"></div>
-        <span className="text-lg text-gray-400">Gerando uma surpresa...</span>
-    </div>
-);
+import RecommendationCard from '@/components/RecommendationCard';
+import { Button } from '@/components/ui/Button';
+import { RecommendationSkeleton } from '@/components/shared/skeletons/RecommendationSkeleton';
 
 export default function RandomPage() {
     const { data: watchedData } = useContext(WatchedDataContext);
@@ -46,16 +41,20 @@ export default function RandomPage() {
             </p>
 
             {!isLoading && (
-                <button
+                <Button
                     onClick={handleGetRandomSuggestion}
                     disabled={isLoading}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 px-8 rounded-lg text-xl transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg hover:shadow-indigo-500/50"
+                    className="py-4 px-8 text-xl transform hover:scale-105 shadow-lg hover:shadow-indigo-500/50"
                 >
                     {recommendation ? 'Tentar Outra Vez' : 'Me Surpreenda!'}
-                </button>
+                </Button>
             )}
 
-            {isLoading && <LoadingSpinner />}
+            {isLoading && (
+                <div className="w-full max-w-lg mt-8">
+                    <RecommendationSkeleton />
+                </div>
+            )}
 
             {error && <p className="mt-8 text-red-400 bg-red-900/50 p-4 rounded-lg">{error}</p>}
             
@@ -64,4 +63,4 @@ export default function RandomPage() {
             )}
         </div>
     );
-};
+}

@@ -8,13 +8,9 @@ import { getPredictionAsRecommendation } from '@/lib/recommendations';
 import { WatchedDataContext } from '@/contexts/WatchedDataContext';
 import RecommendationCard from '@/components/RecommendationCard';
 import TitleSelector from '@/components/shared/TitleSelector';
+import { Button } from '@/components/ui/Button';
+import { RecommendationSkeleton } from '@/components/shared/skeletons/RecommendationSkeleton';
 
-const LoadingSpinner = () => (
-    <div className="flex flex-col items-center justify-center space-y-2 mt-8">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-400"></div>
-        <span className="text-lg text-gray-400">Analisando os confins do cinema...</span>
-    </div>
-);
 
 export default function PredictPage() {
     const { data: watchedData } = useContext(WatchedDataContext);
@@ -65,16 +61,20 @@ export default function PredictPage() {
                     onTitleSelect={handleTitleSelect}
                 />
                 
-                <button
+                <Button
                     onClick={handleAnalyze}
                     disabled={isLoading || !selectedSuggestion}
-                    className="mt-4 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 px-8 rounded-lg text-lg transition-all transform hover:scale-105 shadow-lg disabled:bg-gray-600 disabled:cursor-not-allowed"
+                    className="mt-4 w-full py-4 text-lg transform hover:scale-105 shadow-lg"
                 >
                     {isLoading ? 'Analisando...' : 'Analisar'}
-                </button>
+                </Button>
             </div>
 
-            {isLoading && <LoadingSpinner />}
+            {isLoading && (
+                <div className="w-full max-w-lg mt-8">
+                    <RecommendationSkeleton />
+                </div>
+            )}
             {error && <p className="mt-4 text-red-400 bg-red-900/50 p-4 rounded-lg w-full max-w-lg">{error}</p>}
 
             {result && !isLoading && (

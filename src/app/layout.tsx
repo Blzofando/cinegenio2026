@@ -11,10 +11,15 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "CineGênio Pessoal",
   description: "Seu assistente de entretenimento pessoal.",
-  manifest: "/manifest.json", // Aponta para o nosso novo manifesto
+  manifest: "/manifest.json", 
+  icons: {
+    icon: "/icon.svg",
+    shortcut: "/icon.svg",
+    apple: "/icon.svg",
+  },
   appleWebApp: {
-    capable: true, // Habilita o modo de app no iOS
-    statusBarStyle: "black-translucent", // Estilo da barra de status
+    capable: true, 
+    statusBarStyle: "black-translucent", 
     title: "CineGênio",
   },
 };

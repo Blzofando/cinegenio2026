@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth, validatePassword } from '@/contexts/AuthContext';
+import { Button } from '@/components/ui/Button';
 import ParticlesBackground from '@/components/particles/ParticlesBackground';
 
 export default function SignupPage() {
@@ -217,13 +218,13 @@ export default function SignupPage() {
                             )}
                         </div>
 
-                        <button
+                        <Button
                             type="submit"
                             disabled={loading || passwordErrors.length > 0}
-                            className="w-full py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-purple-500/50"
+                            className="w-full py-4 text-lg font-bold"
                         >
                             {loading ? 'Criando conta...' : 'Criar Conta'}
-                        </button>
+                        </Button>
                     </form>
 
                     {/* Links */}

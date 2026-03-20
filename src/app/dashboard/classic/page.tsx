@@ -87,8 +87,8 @@ export default function HomePage() {
               {/* CTA abaixo da grade */}
               <div className="w-full max-w-xl mx-auto mt-8">
                 <Link href="/dashboard/chat" className="cta-centered">
-                  <span style={{ fontSize: 20 }}>💬</span>
-                  <span style={{ marginLeft: 10, fontWeight: 800 }}>Fale com o Gênio</span>
+                  <span className="text-[20px]">💬</span>
+                  <span className="ml-2.5 font-[800]">Fale com o Gênio</span>
                 </Link>
               </div>
             </div>
@@ -113,10 +113,10 @@ export default function HomePage() {
         <div className="app-header" />
         <Hero />
         <div className="mobile-content px-4">
-          <div style={{ marginTop: 12 }}>
+          <div className="mt-3">
             <Link href="/dashboard/chat" className="cta-centered" aria-label="Fale com o Gênio">
-              <span style={{ fontSize: 20 }}>💬</span>
-              <span style={{ marginLeft: 10, fontWeight: 800 }}>Fale com o Gênio</span>
+              <span className="text-[20px]">💬</span>
+              <span className="ml-2.5 font-[800]">Fale com o Gênio</span>
             </Link>
           </div>
           <div className="content-spacer" />
@@ -130,7 +130,7 @@ export default function HomePage() {
               <FeatureCard icon="🗓️" title="Relevantes da Semana" href="/dashboard/weekly-relevants" />
             </div>
           </section>
-          <div style={{ height: "20px" }} />
+          <div className="h-5" />
         </div>
       </div>
 

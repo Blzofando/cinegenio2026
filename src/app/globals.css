@@ -456,6 +456,38 @@ html, body {
     padding: 0;
     overflow-x: hidden;
     overscroll-behavior-y: contain;
+    /* Custom Scrollbar - Modern CineGênio Style */
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+}
+
+/* Chrome, Safari, and Edge */
+::-webkit-scrollbar {
+    width: 10px; /* Um pouco mais largo para facilitar o 'achado' do mouse na borda */
+    height: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent !important;
+}
+
+::-webkit-scrollbar-thumb {
+    background: transparent; /* 100% invisível por padrão */
+    border-radius: 10px;
+    border: 3px solid transparent; /* Cria um 'acolchoado' transparente */
+    background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.45) !important; /* Aparece no hover */
+    background-clip: content-box;
+}
+
+/* Forçar comportamento de overlay e remover cores de sistema */
+html {
+    overflow-y: overlay;
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent; /* Para Firefox ficar invisível também */
 }
 
 /* responsividade desktop */
@@ -464,4 +496,22 @@ html, body {
     .hero-decor img { max-width: 220px; width: 12vw; }
     .hero-title { font-size: 56px; }
     .cta-wide { padding: 18px 22px; font-size: 18px; }
+}
+
+/* ----------------------------
+    TOP 10 STYLES (Clean UI)
+    ---------------------------- */
+.top-ten-title {
+    -webkit-text-stroke: var(--stroke-width, clamp(1.5px, 0.15vw, 2.5px)) var(--stroke-color, #fff);
+    -webkit-text-fill-color: transparent;
+    text-shadow: 0 0 15px var(--glow-color, rgba(255,255,255,0.2));
+}
+
+.top-ten-number {
+    font-size: clamp(90px, 15vw, 140px);
+    line-height: 1;
+    font-weight: 900;
+    -webkit-text-stroke: var(--number-stroke-width, 2.5px) var(--stroke-color, #fff);
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 0 15px var(--glow-color, rgba(255,255,255,0.2)));
 }

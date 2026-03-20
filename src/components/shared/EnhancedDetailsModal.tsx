@@ -16,6 +16,8 @@ import StatusButton from './StatusButton';
 import CombinedPlayButton from './CombinedPlayButton';
 import { filterStartedSeasons } from '@/lib/services/seriesMetadataCache';
 import { checkWatchedStatus, RatingHistory, RatingType } from '@/lib/watchedService';
+import { Button } from '@/components/ui/Button';
+import MediaDetailsSkeleton from './skeletons/MediaDetailsSkeleton';
 
 interface EnhancedDetailsModalProps {
     item: DisplayableItem;
@@ -193,21 +195,21 @@ const EnhancedDetailsModal: React.FC<EnhancedDetailsModalProps> = ({ item, onClo
         >
             <div className="relative w-full max-w-3xl max-h-[90vh] overflow-y-auto scrollbar-hide bg-black rounded-2xl shadow-2xl animate-in zoom-in-95 duration-300">
                 {/* Close Button */}
-                <button
+                <Button
+                    variant="glass"
+                    size="icon"
                     onClick={onClose}
-                    className="absolute top-4 right-4 z-20 p-2 bg-black/50 hover:bg-black/70 rounded-full transition-colors"
+                    className="absolute top-4 right-4 z-20 rounded-full"
                 >
                     <X className="w-6 h-6 text-white" />
-                </button>
+                </Button>
 
                 {loading ? (
-                    <div className="w-full h-96 flex items-center justify-center">
-                        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-red-600"></div>
-                    </div>
+                    <MediaDetailsSkeleton variant="modal" />
                 ) : (
                     <>
                         {/* Backdrop Image - 16:9 */}
-                        <div className="relative w-full" style={{ aspectRatio: '16/9' }}>
+                        <div className="relative w-full aspect-video">
                             {backdropUrl && (
                                 <>
                                     <Image
@@ -287,12 +289,14 @@ const EnhancedDetailsModal: React.FC<EnhancedDetailsModalProps> = ({ item, onClo
                                     }}
                                 />
 
-                                <Link
-                                    href={detailUrl}
-                                    className="flex items-center gap-2 px-4 md:px-6 py-2 md:py-3 bg-gray-800 hover:bg-gray-700 rounded-lg font-bold text-white text-sm md:text-base transition-all transform hover:scale-105"
-                                >
-                                    Ver Mais
-                                    <ChevronRight className="w-4 h-4 md:w-5 md:h-5" />
+                                <Link href={detailUrl}>
+                                    <Button
+                                        variant="secondary"
+                                        rightIcon={ChevronRight}
+                                        className="transform hover:scale-105"
+                                    >
+                                        Ver Mais
+                                    </Button>
                                 </Link>
                             </div>
 
@@ -362,6 +366,7 @@ const EnhancedDetailsModal: React.FC<EnhancedDetailsModalProps> = ({ item, onClo
                         ...item,
                         ...resumeData // Adiciona season/episode se disponível
                     }}
+                    isOpen={showPlayer}
                     onClose={() => setShowPlayer(false)}
                 />
             )}

@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { markAsWatching, restartItem } from '@/lib/watchedService';
 import RatingModal from './RatingModal';
 import EpisodeSelector from './EpisodeSelector';
+import { Button } from '@/components/ui/Button';
 
 interface StatusButtonProps {
     item: {
@@ -93,80 +94,90 @@ const StatusButton: React.FC<StatusButtonProps> = ({ item, onStatusChange, class
         <>
             <div ref={dropdownRef} className={`relative ${className}`}>
                 {/* Button */}
-                <button
-                    onClick={(e) => {
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={(e: React.MouseEvent) => {
                         e.stopPropagation();
                         setIsOpen(!isOpen);
                     }}
-                    className="p-2 bg-black/40 hover:bg-black/60 backdrop-blur-sm border border-gray-700 hover:border-gray-500 rounded-lg transition-all group"
+                    className="p-2 bg-black/40 hover:bg-black/60 backdrop-blur-sm border border-gray-700 hover:border-gray-500 rounded-lg transition-all group h-auto"
                     title="Ações"
                 >
                     <MoreVertical className="w-5 h-5 text-gray-300 group-hover:text-white transition-colors" />
-                </button>
+                </Button>
 
                 {/* Dropdown Menu */}
                 {isOpen && (
                     <div className="absolute top-full right-0 mt-2 w-56 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
                         {/* Watching */}
-                        <button
-                            onClick={(e) => {
+                         <Button
+                            variant="ghost"
+                            justify="start"
+                            onClick={(e: React.MouseEvent) => {
                                 e.stopPropagation();
                                 handleWatching();
                             }}
-                            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-800 transition-colors text-left"
+                            className="w-full gap-3 px-4 py-3 hover:bg-gray-800 transition-colors h-auto rounded-none"
                         >
-                            <Eye className="w-5 h-5 text-blue-400" />
-                            <div>
-                                <div className="font-semibold text-white">Assistindo</div>
-                                <div className="text-xs text-gray-400">Controle manual (0min)</div>
+                            <Eye className="w-5 h-5 text-blue-400 whitespace-nowrap" />
+                            <div className="flex-1 min-w-0">
+                                <div className="font-semibold text-white truncate">Assistindo</div>
+                                <div className="text-xs text-gray-400 truncate">Controle manual (0min)</div>
                             </div>
-                        </button>
+                        </Button>
 
                         {/* Watched */}
-                        <button
-                            onClick={(e) => {
+                         <Button
+                            variant="ghost"
+                            justify="start"
+                            onClick={(e: React.MouseEvent) => {
                                 e.stopPropagation();
                                 handleWatched();
                             }}
-                            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-800 transition-colors text-left border-t border-gray-800"
+                            className="w-full gap-3 px-4 py-3 hover:bg-gray-800 transition-colors border-t border-gray-800 h-auto rounded-none"
                         >
-                            <Check className="w-5 h-5 text-green-400" />
-                            <div>
-                                <div className="font-semibold text-white">Watched</div>
-                                <div className="text-xs text-gray-400">Marcar como assistido</div>
+                            <Check className="w-5 h-5 text-green-400 whitespace-nowrap" />
+                            <div className="flex-1 min-w-0">
+                                <div className="font-semibold text-white truncate">Watched</div>
+                                <div className="text-xs text-gray-400 truncate">Marcar como assistido</div>
                             </div>
-                        </button>
+                        </Button>
 
                         {/* Restart */}
-                        <button
-                            onClick={(e) => {
+                         <Button
+                            variant="ghost"
+                            justify="start"
+                            onClick={(e: React.MouseEvent) => {
                                 e.stopPropagation();
                                 handleRestart();
                             }}
-                            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-800 transition-colors text-left border-t border-gray-800"
+                            className="w-full gap-3 px-4 py-3 hover:bg-gray-800 transition-colors border-t border-gray-800 h-auto rounded-none"
                         >
-                            <RotateCcw className="w-5 h-5 text-orange-400" />
-                            <div>
-                                <div className="font-semibold text-white">Recomeçar</div>
-                                <div className="text-xs text-gray-400">Resetar progresso</div>
+                            <RotateCcw className="w-5 h-5 text-orange-400 whitespace-nowrap" />
+                            <div className="flex-1 min-w-0">
+                                <div className="font-semibold text-white truncate">Recomeçar</div>
+                                <div className="text-xs text-gray-400 truncate">Resetar progresso</div>
                             </div>
-                        </button>
+                        </Button>
 
                         {/* Select Episode (TV only) */}
                         {item.mediaType === 'tv' && (
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleSelectEpisode();
-                                }}
-                                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-800 transition-colors text-left border-t border-gray-800"
-                            >
-                                <List className="w-5 h-5 text-purple-400" />
-                                <div>
-                                    <div className="font-semibold text-white">Episódios</div>
-                                    <div className="text-xs text-gray-400">Selecionar episódio</div>
-                                </div>
-                            </button>
+                                 <Button
+                                    variant="ghost"
+                                    justify="start"
+                                    onClick={(e: React.MouseEvent) => {
+                                        e.stopPropagation();
+                                        handleSelectEpisode();
+                                    }}
+                                    className="w-full gap-3 px-4 py-3 hover:bg-gray-800 transition-colors border-t border-gray-800 h-auto rounded-none"
+                                >
+                                    <List className="w-5 h-5 text-purple-400 whitespace-nowrap" />
+                                    <div className="flex-1 min-w-0">
+                                        <div className="font-semibold text-white truncate">Episódios</div>
+                                        <div className="text-xs text-gray-400 truncate">Selecionar episódio</div>
+                                    </div>
+                                </Button>
                         )}
                     </div>
                 )}

@@ -3,6 +3,7 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft } from 'lucide-react';
+import { Button } from '@/components/ui/Button';
 import DashboardHeader from '@/components/shared/DashboardHeader';
 import MobileBottomNav from '@/components/shared/MobileBottomNav';
 import ComingSoonSection from '@/components/shared/ComingSoonSection';
@@ -17,13 +18,14 @@ export default function ComingSoonTVPage() {
 
             <div className="container mx-auto px-4 py-8">
                 {/* Back button */}
-                <button
+                <Button
+                    variant="ghost"
                     onClick={() => router.back()}
-                    className="flex items-center gap-2 text-gray-400 hover:text-white mb-4 transition-colors"
+                    className="flex items-center gap-2 text-gray-400 hover:text-white mb-4 transition-colors p-0 h-auto"
                 >
                     <ChevronLeft className="w-5 h-5" />
                     Voltar
-                </button>
+                </Button>
 
                 {/* Title */}
                 <h1 className="text-4xl font-black text-white mb-8">

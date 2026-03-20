@@ -10,6 +10,9 @@ import { doc, getDoc, deleteDoc, collection, getDocs, updateDoc, setDoc } from '
 import RatingModal from './RatingModal';
 import EpisodeSelector from './EpisodeSelector';
 import { saveDualEpisodes } from '@/lib/dualEpisodeService';
+import { Button } from '@/components/ui/Button';
+import { ModalWrapper } from '@/components/ui/Modal';
+import ConfirmModal from '@/components/ui/ConfirmModal';
 
 interface CombinedPlayButtonProps {
     item: {
@@ -39,6 +42,8 @@ const CombinedPlayButton: React.FC<CombinedPlayButtonProps> = ({
     const [showEpisodeSelector, setShowEpisodeSelector] = useState(false);
     const [isWatching, setIsWatching] = useState(false);
     const [dropdownPosition, setDropdownPosition] = useState<'below' | 'above'>('below');
+    const [showRestartConfirm, setShowRestartConfirm] = useState(false);
+    const [showDroppedConfirm, setShowDroppedConfirm] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const buttonRef = useRef<HTMLButtonElement>(null);
 
@@ -118,9 +123,6 @@ const CombinedPlayButton: React.FC<CombinedPlayButtonProps> = ({
     const handleRestart = async () => {
         if (!user) return;
 
-        const confirm = window.confirm(`Recomeçar "${item.title}"?`);
-        if (!confirm) return;
-
         try {
             // Reset timestamp to 0 in Firebase IMMEDIATELY
             if (item.mediaType === 'movie') {
@@ -177,9 +179,6 @@ const CombinedPlayButton: React.FC<CombinedPlayButtonProps> = ({
     const handleDropped = async () => {
         if (!user) return;
 
-        const confirm = window.confirm(`Abandonar "${item.title}"? O título será movido para Abandonados.`);
-        if (!confirm) return;
-
         try {
             await markAsDropped(user.uid, item);
             console.log('✅ Item marcado como abandonado');
@@ -231,22 +230,19 @@ const CombinedPlayButton: React.FC<CombinedPlayButtonProps> = ({
                 {/* Combined Button - items-stretch ensures equal height */}
                 <div className="flex items-stretch rounded-lg overflow-hidden shadow-lg">
                     {/* Main Play Button */}
-                    <button
+                    <Button
                         onClick={
                             watchStatus === 'dropped' || watchStatus === 'watched'
                                 ? () => setIsOpen(!isOpen)
                                 : onPlay
                         }
-                        className={`flex items-center gap-2 px-4 md:px-6 lg:px-8 py-2 md:py-3 font-bold text-white text-sm md:text-base transition-all ${watchStatus === 'dropped'
-                            ? 'bg-orange-600 hover:bg-orange-700'
-                            : watchStatus === 'rewatch'
-                                ? 'bg-purple-600 hover:bg-purple-700'
-                                : watchStatus === 'resume'
-                                    ? 'bg-green-600 hover:bg-green-700'
-                                    : watchStatus === 'watched'
-                                        ? 'bg-gray-800 hover:bg-gray-700'
-                                        : 'bg-red-600 hover:bg-red-700'
-                            }`}
+                        variant={
+                            watchStatus === 'dropped' ? 'danger' :
+                            watchStatus === 'rewatch' ? 'secondary' :
+                            watchStatus === 'resume' ? 'success' :
+                            watchStatus === 'watched' ? 'secondary' : 'primary'
+                        }
+                        className="rounded-r-none"
                     >
                         {watchStatus === 'dropped' ? (
                             <>
@@ -274,12 +270,19 @@ const CombinedPlayButton: React.FC<CombinedPlayButtonProps> = ({
                                 Assistir
                             </>
                         )}
-                    </button>
+                    </Button>
 
                     {/* Dropdown Toggle */}
-                    <button
+                    <Button
                         ref={buttonRef}
-                        onClick={(e) => {
+                        variant={
+                            watchStatus === 'dropped' ? 'danger' :
+                            watchStatus === 'rewatch' ? 'secondary' :
+                            watchStatus === 'resume' ? 'success' :
+                            watchStatus === 'watched' ? 'secondary' : 'primary'
+                        }
+                        size="icon"
+                        onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                             e.stopPropagation();
 
                             // Calcular posição do dropdown
@@ -299,19 +302,10 @@ const CombinedPlayButton: React.FC<CombinedPlayButtonProps> = ({
 
                             setIsOpen(!isOpen);
                         }}
-                        className={`flex items-center px-2 md:px-3 border-l-2 transition-all ${watchStatus === 'dropped'
-                            ? 'bg-orange-600 hover:bg-orange-700 border-black/20'
-                            : watchStatus === 'rewatch'
-                                ? 'bg-purple-600 hover:bg-purple-700 border-black/20'
-                                : watchStatus === 'resume'
-                                    ? 'bg-green-600 hover:bg-green-700 border-black/20'
-                                    : watchStatus === 'watched'
-                                        ? 'bg-gray-800 hover:bg-gray-700 border-black/20'
-                                        : 'bg-red-600 hover:bg-red-700 border-black/20'
-                            }`}
+                        className="rounded-l-none border-l border-black/20"
                     >
                         <MoreVertical className="w-5 h-5 text-white" />
-                    </button>
+                    </Button>
                 </div>
 
                 {/* Dropdown Menu */}
@@ -319,24 +313,28 @@ const CombinedPlayButton: React.FC<CombinedPlayButtonProps> = ({
                     <div className={`absolute left-0 w-64 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl overflow-hidden z-50 animate-in fade-in duration-200 ${dropdownPosition === 'above' ? 'bottom-full mb-2' : 'top-full mt-2'}`}>
                         {/* Watching - mostrar para NEW e DROPPED */}
                         {(watchStatus === 'new' || watchStatus === 'dropped') && (
-                            <button
-                                onClick={(e) => {
+                            <Button
+                                variant="ghost"
+                                justify="start"
+                                onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                                     e.stopPropagation();
                                     handleWatching();
                                 }}
-                                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-800 transition-colors text-left"
+                                className="w-full gap-3 px-4 py-3 hover:bg-gray-800 transition-colors"
                             >
                                 <Eye className="w-5 h-5 text-blue-400" />
                                 <div>
                                     <div className="font-semibold text-white">Assistindo</div>
                                     <div className="text-xs text-gray-400">Marcar como assistindo</div>
                                 </div>
-                            </button>
+                            </Button>
                         )}
 
                         {/* Watchlist - sempre disponível */}
-                        <button
-                            onClick={(e) => {
+                        <Button
+                            variant="ghost"
+                            justify="start"
+                            onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                                 e.stopPropagation();
                                 if (onWatchlistToggle) {
                                     onWatchlistToggle();
@@ -345,7 +343,7 @@ const CombinedPlayButton: React.FC<CombinedPlayButtonProps> = ({
                                 }
                                 setIsOpen(false);
                             }}
-                            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-800 transition-colors text-left border-t border-gray-800"
+                            className="w-full gap-3 px-4 py-3 hover:bg-gray-800 transition-colors border-t border-gray-800"
                         >
                             {isInWatchlist ? (
                                 <>
@@ -364,15 +362,17 @@ const CombinedPlayButton: React.FC<CombinedPlayButtonProps> = ({
                                     </div>
                                 </>
                             )}
-                        </button>
+                        </Button>
 
                         {/* Watched option */}
-                        <button
-                            onClick={(e) => {
+                        <Button
+                            variant="ghost"
+                            justify="start"
+                            onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                                 e.stopPropagation();
                                 handleWatched();
                             }}
-                            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-800 transition-colors text-left border-t border-gray-800"
+                            className="w-full gap-3 px-4 py-3 hover:bg-gray-800 transition-colors border-t border-gray-800"
                         >
                             <Check className={`w-5 h-5 ${watchStatus === 'watched' ? 'text-yellow-400' : 'text-green-400'}`} />
                             <div>
@@ -383,57 +383,63 @@ const CombinedPlayButton: React.FC<CombinedPlayButtonProps> = ({
                                     {watchStatus === 'watched' ? 'Deixe outra avaliação' : 'Marcar como assistido'}
                                 </div>
                             </div>
-                        </button>
+                        </Button>
 
                         {/* Restart - só mostrar para resume, reWatch ou dropped */}
                         {(watchStatus === 'resume' || watchStatus === 'rewatch' || watchStatus === 'dropped') && (
-                            <button
-                                onClick={(e) => {
+                        <Button
+                                variant="ghost"
+                                justify="start"
+                                onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                                     e.stopPropagation();
-                                    handleRestart();
+                                    setShowRestartConfirm(true);
                                 }}
-                                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-800 transition-colors text-left border-t border-gray-800"
+                                className="w-full gap-3 px-4 py-3 hover:bg-gray-800 transition-colors border-t border-gray-800"
                             >
                                 <RotateCcw className="w-5 h-5 text-orange-400" />
                                 <div>
                                     <div className="font-semibold text-white">Recomeçar</div>
                                     <div className="text-xs text-gray-400">Resetar progresso</div>
                                 </div>
-                            </button>
+                            </Button>
                         )}
 
                         {/* Abandonar - só mostrar se RESUME ou REWATCH (não mostrar em NEW ou DROPPED) */}
                         {(watchStatus === 'resume' || watchStatus === 'rewatch') && (
-                            <button
-                                onClick={(e) => {
+                            <Button
+                                variant="ghost"
+                                justify="start"
+                                onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                                     e.stopPropagation();
-                                    handleDropped();
+                                    setShowDroppedConfirm(true);
                                 }}
-                                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-800 transition-colors text-left border-t border-gray-800"
+                                className="w-full gap-3 px-4 py-3 hover:bg-gray-800 transition-colors border-t border-gray-800"
                             >
                                 <XCircle className="w-5 h-5 text-red-400" />
                                 <div>
                                     <div className="font-semibold text-white">Abandonar</div>
                                     <div className="text-xs text-gray-400">Parei de assistir</div>
                                 </div>
-                            </button>
+                            </Button>
                         )}
 
                         {/* Select Episode (TV only) */}
                         {item.mediaType === 'tv' && (
-                            <button
-                                onClick={(e) => {
+                            <Button
+                                variant="ghost"
+                                justify="start"
+                                onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                                     e.stopPropagation();
                                     handleSelectEpisode();
                                 }}
-                                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-800 transition-colors text-left border-t border-gray-800"
+                                className="w-full gap-3 px-4 py-3 hover:bg-gray-800 transition-colors border-t border-gray-800"
                             >
                                 <List className="w-5 h-5 text-purple-400" />
                                 <div>
                                     <div className="font-semibold text-white">Episódios</div>
                                     <div className="text-xs text-gray-400">Selecionar episódio</div>
                                 </div>
-                            </button>
+                            </Button>
                         )}
                     </div>
                 )}
@@ -449,17 +455,35 @@ const CombinedPlayButton: React.FC<CombinedPlayButtonProps> = ({
             )}
 
             {/* Episode Selector Modal (TV only) */}
-            {showEpisodeSelector && item.mediaType === 'tv' && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-                    <div className="relative w-full max-w-4xl bg-gray-900 rounded-2xl overflow-hidden">
-                        <EpisodeSelector
-                            showId={item.id}
-                            onSelect={handleEpisodeSelect}
-                            onClose={() => setShowEpisodeSelector(false)}
-                        />
-                    </div>
-                </div>
-            )}
+            <ModalWrapper 
+                isOpen={showEpisodeSelector && item.mediaType === 'tv'} 
+                onClose={() => setShowEpisodeSelector(false)}
+                size="lg"
+            >
+                <EpisodeSelector
+                    showId={item.id}
+                    onSelect={handleEpisodeSelect}
+                    onClose={() => setShowEpisodeSelector(false)}
+                />
+            </ModalWrapper>
+
+            {/* Restart Confirmation */}
+            <ConfirmModal
+                isOpen={showRestartConfirm}
+                onClose={() => setShowRestartConfirm(false)}
+                onConfirm={handleRestart}
+                title="Recomeçar Título"
+                message={`Deseja recomeçar "${item.title}" do início? Isso resetará seu progresso atual.`}
+            />
+
+            {/* Dropped Confirmation */}
+            <ConfirmModal
+                isOpen={showDroppedConfirm}
+                onClose={() => setShowDroppedConfirm(false)}
+                onConfirm={handleDropped}
+                title="Abandonar Título"
+                message={`Tem certeza que deseja marcar "${item.title}" como abandonado? Ele será movido para sua lista de títulos abandonados.`}
+            />
         </>
     );
 };

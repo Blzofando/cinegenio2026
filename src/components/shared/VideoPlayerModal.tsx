@@ -1,17 +1,19 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { X, Calendar, Clock, Star, Users, Layout } from 'lucide-react';
+import { X, Calendar, Clock, Star, Users, Layout, Server } from 'lucide-react';
 import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
-import { DisplayableItem } from '@/types';
+import { DisplayableItem, PlayerPhase } from '@/types';
 import { Button } from '@/components/ui/Button';
-import { getPlayerUrl } from '@/lib/videoPlayerUtils';
+import { getPlayerUrl, ServerType, DEFAULT_SERVER } from '@/lib/videoPlayerUtils';
 import { useVideoPlayerProgress } from '@/hooks/useVideoPlayerProgress';
+import { saveStartWatching } from '@/lib/nowWatchingService';
 
-// Novos componentes modulares
+// Componentes modulares
 import PlayerFrame from './VideoPlayer/PlayerFrame';
 import ServerToggle from './VideoPlayer/ServerToggle';
+import ServerSelector from './VideoPlayer/ServerSelector';
 import EpisodeSelector from './EpisodeSelector';
 
 interface VideoPlayerModalProps {
@@ -24,11 +26,11 @@ const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({ item, isOpen, onClo
   const { user } = useAuth();
   
   // Estados básicos
-  const [server, setServer] = useState<'videasy' | 'vidking'>('videasy');
+  const [server, setServer] = useState<ServerType>(DEFAULT_SERVER);
   const [selectedSeason, setSelectedSeason] = useState(item.season || 1);
   const [selectedEpisode, setSelectedEpisode] = useState(item.episode || 1);
   const [showEpisodeSelector, setShowEpisodeSelector] = useState(!item.episode);
-  const [isHovering, setIsHovering] = useState(false);
+  const [phase, setPhase] = useState<PlayerPhase>('server-select');
   const [tvDetails, setTvDetails] = useState<any>(null);
   const [movieDetails, setMovieDetails] = useState<any>(null);
 
@@ -36,7 +38,10 @@ const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({ item, isOpen, onClo
   const {
     initialLoadDone,
     initialResumeTime,
-    handlePlayerMessage
+    initialPhase,
+    handlePlayerMessage,
+    initPlayback,
+    saveCurrentProgress,
   } = useVideoPlayerProgress({
     user,
     item,
@@ -50,7 +55,21 @@ const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({ item, isOpen, onClo
     movieDetails,
   });
 
-  // Carregar detalhes (TMDB) - Mantendo aqui por enquanto para simplicidade do modal
+  // Sincronizar fase com o estado inicial do Firebase
+  useEffect(() => {
+    if (initialLoadDone) {
+      setPhase(initialPhase);
+    }
+  }, [initialLoadDone, initialPhase]);
+
+  // Iniciar lógicas avançadas (ex: prefetch dual-episode e inicializar stamp) assim que chegar no player
+  useEffect(() => {
+    if (phase === 'playing') {
+      initPlayback();
+    }
+  }, [phase, initPlayback]);
+
+  // Carregar detalhes (TMDB)
   useEffect(() => {
     const fetchDetails = async () => {
       try {
@@ -72,20 +91,89 @@ const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({ item, isOpen, onClo
   // Sincronizar mensagens do iframe
   useEffect(() => {
     const messageHandler = (event: MessageEvent) => {
-      if (event.data?.type === 'PLAYER_EVENT') {
-        handlePlayerMessage(event.data);
+      // Ignorar eventos não relacionados que podem poluir (como React DevTools)
+      if (
+        typeof event.data === 'string' && event.data.includes('react-devtools') ||
+        event.data?.source?.includes('react-devtools')
+      ) {
+        return;
       }
+
+      handlePlayerMessage(event.data);
     };
 
     window.addEventListener('message', messageHandler);
     return () => window.removeEventListener('message', messageHandler);
   }, [handlePlayerMessage]);
 
+  // === HANDLERS DE SELEÇÃO ===
+
+  // Quando selecionar servidor na tela inicial
+  const handleServerSelect = useCallback(async (selectedServer: ServerType) => {
+    setServer(selectedServer);
+
+    // Salvar no Firebase
+    if (user) {
+      try {
+        await saveStartWatching(user.uid, {
+          id: item.id,
+          mediaType: item.tmdbMediaType,
+          title: item.title || item.name || '',
+          posterUrl: item.posterUrl || undefined,
+          backdropUrl: item.backdropUrl || undefined,
+          lastServer: selectedServer,
+          season: item.tmdbMediaType === 'tv' ? selectedSeason : undefined,
+          episode: item.tmdbMediaType === 'tv' ? selectedEpisode : undefined,
+          timestamp: 0,
+        });
+      } catch (error) {
+        console.error('[VideoPlayerModal] Save error:', error);
+      }
+    }
+
+    // Ir para o player
+    setPhase('playing');
+  }, [user, item, selectedSeason, selectedEpisode]);
+
+  // Quando selecionar episódio (séries)
+  const handleEpisodeSelect = useCallback((season: number, ep: number) => {
+    setSelectedSeason(season);
+    setSelectedEpisode(ep);
+    setShowEpisodeSelector(false);
+    // Após selecionar episódio, ir para seleção de servidor
+    setPhase('server-select');
+  }, []);
+
+  // Quando trocar servidor durante reprodução
+  const handleServerChange = useCallback(async (newServer: ServerType) => {
+    setServer(newServer);
+
+    // Salvar a troca no Firebase
+    if (user) {
+      try {
+        await saveStartWatching(user.uid, {
+          id: item.id,
+          mediaType: item.tmdbMediaType,
+          title: item.title || item.name || '',
+          posterUrl: item.posterUrl || undefined,
+          backdropUrl: item.backdropUrl || undefined,
+          lastServer: newServer,
+          season: item.tmdbMediaType === 'tv' ? selectedSeason : undefined,
+          episode: item.tmdbMediaType === 'tv' ? selectedEpisode : undefined,
+        });
+      } catch (error) {
+        console.error('[VideoPlayerModal] Server change save error:', error);
+      }
+    }
+  }, [user, item, selectedSeason, selectedEpisode]);
+
   // Gerar URL do Player
   const playerUrl = useMemo(() => {
     const base = getPlayerUrl(item, server, selectedSeason, selectedEpisode);
     if (item.tmdbMediaType === 'movie' && initialResumeTime) {
-      return `${base}?t=${initialResumeTime}`;
+      // Videasy usa ?progress=, outros podem não suportar
+      if (server === 'videasy') return `${base}?progress=${initialResumeTime}`;
+      return base;
     }
     return base;
   }, [item, server, selectedSeason, selectedEpisode, initialResumeTime]);
@@ -115,7 +203,10 @@ const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({ item, isOpen, onClo
       <Button
         variant="glass"
         size="icon"
-        onClick={onClose}
+        onClick={() => {
+          if (phase === 'playing') saveCurrentProgress(true);
+          onClose();
+        }}
         className="absolute top-6 right-6 rounded-full transition-all hover:rotate-90 z-[110] p-3"
       >
         <X className="w-6 h-6 text-white" />
@@ -136,6 +227,12 @@ const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({ item, isOpen, onClo
                   {new Date(details.release_date).getFullYear()}
                 </span>
               )}
+              {details?.first_air_date && !details?.release_date && (
+                <span className="flex items-center gap-1.5 bg-white/5 px-3 py-1 rounded-full border border-white/10">
+                  <Calendar className="w-4 h-4 text-purple-400" />
+                  {new Date(details.first_air_date).getFullYear()}
+                </span>
+              )}
               {details?.runtime && (
                 <span className="flex items-center gap-1.5 bg-white/5 px-3 py-1 rounded-full border border-white/10">
                   <Clock className="w-4 h-4 text-purple-400" />
@@ -147,7 +244,7 @@ const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({ item, isOpen, onClo
                 {details?.vote_average?.toFixed(1) || 'N/A'}
               </span>
               <span className="px-3 py-1 rounded-full border border-white/10 bg-purple-500/10 text-purple-400 font-bold uppercase tracking-wider text-xs">
-                {item.tmdbMediaType === 'tv' ? 'Série' : 'Filme'}
+                {isTV ? 'Série' : 'Filme'}
               </span>
             </div>
 
@@ -157,50 +254,79 @@ const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({ item, isOpen, onClo
           </div>
         </div>
 
-        {/* Player Area */}
+        {/* === ÁREA PRINCIPAL === */}
         <div className="relative group/player">
-          {(!isTV || !showEpisodeSelector) && (
-            <PlayerFrame 
-              playerUrl={playerUrl} 
-              onMouseEnter={() => setIsHovering(true)}
-              onMouseLeave={() => setIsHovering(false)}
-            >
-              <ServerToggle 
-                server={server} 
-                onToggle={() => setServer(server === 'videasy' ? 'vidking' : 'videasy')} 
-              />
-              
-              {isTV && (
-                <Button
-                  variant="outline-purple"
-                  onClick={() => setShowEpisodeSelector(true)}
-                  className="absolute top-4 right-4 bg-black/40 hover:bg-black/60 backdrop-blur-md"
-                >
-                  Selecionar Episódio
-                </Button>
-              )}
-            </PlayerFrame>
-          )}
 
-          {/* Seletor de Episódios */}
-          {isTV && showEpisodeSelector && tvDetails && (
+          {/* FASE 1: Seleção de Episódio (só séries, primeira vez) */}
+          {phase === 'episode-select' && isTV && (
             <div className="bg-zinc-900/50 backdrop-blur-xl rounded-2xl border border-white/10 p-6">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-xl font-bold flex items-center gap-2">
                   <Layout className="w-5 h-5 text-purple-500" />
-                  Episódios
+                  Selecione o Episódio
                 </h3>
               </div>
               <EpisodeSelector
                 showId={item.id}
-                onSelect={(season, ep) => {
-                  setSelectedSeason(season);
-                  setSelectedEpisode(ep);
-                  setShowEpisodeSelector(false);
-                }}
-                onClose={() => setShowEpisodeSelector(false)}
+                onSelect={handleEpisodeSelect}
+                onClose={onClose}
               />
             </div>
+          )}
+
+          {/* FASE 2: Seleção de Servidor */}
+          {phase === 'server-select' && (
+            <div className="bg-zinc-900/50 backdrop-blur-xl rounded-2xl border border-white/10 p-6 md:p-8">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
+                  <Server className="w-5 h-5 text-purple-400" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-white">Escolha o Servidor</h3>
+                  <p className="text-sm text-gray-400">
+                    {isTV
+                      ? `S${selectedSeason}E${selectedEpisode} • Selecione o servidor de reprodução`
+                      : 'Selecione o servidor de reprodução'
+                    }
+                  </p>
+                </div>
+              </div>
+
+              <ServerSelector
+                activeServer={null}
+                onSelect={handleServerSelect}
+              />
+            </div>
+          )}
+
+          {/* FASE 3: Player reproduzindo */}
+          {phase === 'playing' && (
+            <>
+              <PlayerFrame playerUrl={playerUrl}>
+                <ServerToggle
+                  server={server}
+                  onSelect={handleServerChange}
+                />
+
+                {isTV && (
+                  <Button
+                    variant="outline-purple"
+                    onClick={() => setPhase('episode-select')}
+                    className="absolute top-4 right-4 bg-black/40 hover:bg-black/60 backdrop-blur-md"
+                  >
+                    Selecionar Episódio
+                  </Button>
+                )}
+              </PlayerFrame>
+
+              {/* Info do episódio atual (séries) */}
+              {isTV && (
+                <div className="mt-3 flex items-center gap-2 text-sm text-gray-400">
+                  <Layout className="w-4 h-4 text-purple-400" />
+                  <span>Temporada {selectedSeason} • Episódio {selectedEpisode}</span>
+                </div>
+              )}
+            </>
           )}
         </div>
 

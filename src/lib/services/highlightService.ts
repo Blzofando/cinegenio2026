@@ -8,6 +8,7 @@ export interface HighlightItem {
     title: string;
     overview: string;
     backdropUrl: string;
+    posterUrl: string;
     logoUrl: string | null;
     voteAverage: number;
     releaseDate: string;
@@ -69,6 +70,7 @@ async function fetchTMDBDetails(tmdbId: number, mediaType: 'movie' | 'tv'): Prom
             title: data.title || data.name,
             overview: data.overview || '',
             backdropUrl: data.backdrop_path ? `https://image.tmdb.org/t/p/original${data.backdrop_path}` : '',
+            posterUrl: data.poster_path ? `https://image.tmdb.org/t/p/w500${data.poster_path}` : '',
             voteAverage: data.vote_average || 0,
             releaseDate: data.release_date || data.first_air_date || '',
             genres: data.genres?.map((g: any) => g.name) || [],
@@ -133,6 +135,7 @@ async function collectHighlights(): Promise<HighlightItem[]> {
                         title: completeItem.title,
                         overview: completeItem.overview || '',
                         backdropUrl: completeItem.backdropUrl || '',
+                        posterUrl: completeItem.posterUrl || '',
                         logoUrl: null, // Will be fetched later
                         voteAverage: completeItem.voteAverage || 0,
                         releaseDate: completeItem.releaseDate || '',
@@ -154,10 +157,10 @@ async function collectHighlights(): Promise<HighlightItem[]> {
     console.log(`[Highlights] ✅ Collected ${highlights.length} items TOTAL`);
     console.log('[Highlights] Items:', highlights.map(h => h.title));
 
-    // Fetch logos for all highlights
-    for (const highlight of highlights) {
+    // Fetch logos em paralelo!
+    await Promise.all(highlights.map(async (highlight) => {
         highlight.logoUrl = await fetchTitleLogo(highlight.id, highlight.tmdbMediaType);
-    }
+    }));
 
     return highlights.slice(0, MAX_HIGHLIGHTS);
 }
@@ -259,6 +262,7 @@ async function collectMoviesHighlights(): Promise<HighlightItem[]> {
                             title: item.title,
                             overview: item.overview || '',
                             backdropUrl: item.backdrop_path ? `https://image.tmdb.org/t/p/original${item.backdrop_path}` : '',
+                            posterUrl: item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : '',
                             logoUrl: null,
                             voteAverage: item.vote_average || 0,
                             releaseDate: item.release_date || '',
@@ -346,6 +350,7 @@ async function collectTvHighlights(): Promise<HighlightItem[]> {
                         title: item.name,
                         overview: item.overview || '',
                         backdropUrl: item.backdrop_path ? `https://image.tmdb.org/t/p/original${item.backdrop_path}` : '',
+                        posterUrl: item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : '',
                         logoUrl: null,
                         voteAverage: item.vote_average || 0,
                         releaseDate: item.first_air_date || '',
@@ -370,9 +375,13 @@ async function collectTvHighlights(): Promise<HighlightItem[]> {
  */
 async function saveToFirebase(highlights: HighlightItem[], cacheId: string = 'principal'): Promise<void> {
     try {
+        // Firebase Firestore rejecta campos "undefined" que as vezes vazam de payload de APIs. 
+        // stringify limpa todas as props vazias
+        const cleanHighlights = JSON.parse(JSON.stringify(highlights));
+
         const docRef = doc(db, 'public', cacheId);
-        const cache: HighlightCache = {
-            items: highlights,
+        const cache = {
+            items: cleanHighlights,
             expiresAt: Date.now() + CACHE_DURATION,
             lastFetched: Date.now(),
         };
@@ -421,12 +430,16 @@ export async function getHighlights(page: 'dashboard' | 'movies' | 'tv' = 'dashb
         }
 
         if (highlights.length > 0) {
-            // Fetch logos for all highlights
-            for (const highlight of highlights) {
-                highlight.logoUrl = await fetchTitleLogo(highlight.id, highlight.tmdbMediaType);
-            }
+            // Fetch logos em paralelo invés de sequencial (for of demorado) 
+            await Promise.all(highlights.map(async (highlight) => {
+                if (!highlight.logoUrl) { // evita refetch se a função específica ja trouxe
+                   highlight.logoUrl = await fetchTitleLogo(highlight.id, highlight.tmdbMediaType);
+                }
+            }));
 
-            await saveToFirebase(highlights, cacheId);
+            // Salvamos pra na proxima leitura do client nao travar
+            // Nao colocamos await pro setDoc não bloquear o render da UI, agilizando em 50ms
+            saveToFirebase(highlights, cacheId);
         } else {
             console.error(`[Highlights] ⚠️ No highlights collected for ${page}!`);
         }

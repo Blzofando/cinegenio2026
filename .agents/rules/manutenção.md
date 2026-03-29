@@ -4,6 +4,10 @@ trigger: always_on
 
 # Regras de Manutenção e Efeito Cascata
 
+0. CONTEXTO ANTES DE TUDO
+   Antes de qualquer tarefa, leia `ARQUITETURA_MAP.md` na raiz do projeto.
+   Só após a leitura você pode propor qualquer alteração.
+
 1. MAPEAR ANTES DE MEXER:
    Toda vez que eu pedir para você alterar uma função, rota ou banco de dados existente, você NÃO PODE alterar o código imediatamente. Primeiro, você deve vasculhar o projeto e listar todos os arquivos que importam ou dependem dessa função.
 

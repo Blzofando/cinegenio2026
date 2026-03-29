@@ -58,17 +58,17 @@ export default function DashboardHome() {
         };
     }, [hasTriggeredPopulate]);
 
-    // Load highlights for hero carousel
+    // Load highlights for hero carousel (Imperativo robusto sem conflitos)
     useEffect(() => {
         const loadHighlights = async () => {
-            const items = await getHighlights();
+            const items = await getHighlights('dashboard');
             setHighlights(items);
         };
         loadHighlights();
     }, []);
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-black via-gray-900 to-black text-white pb-16 md:pb-0">
+        <div className="min-h-screen bg-gradient-to-b from-black from-[20%] via-[#0a1024] via-[60%] to-black text-white pb-16 md:pb-0">
             <DashboardHeader />
             <MobileBottomNav />
 

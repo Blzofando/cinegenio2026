@@ -126,22 +126,14 @@ const EnhancedDetailsModal: React.FC<EnhancedDetailsModalProps> = ({ item, onClo
         // Para séries em resume: buscar temporada/episódio do nowWatching
         if (user && item.tmdbMediaType === 'tv' && watchStatus === 'resume') {
             try {
-                const nowWatchingRef = collection(db, 'users', user.uid, 'nowWatching');
-                const snapshot = await getDocs(nowWatchingRef);
                 const docId = `tv_${item.id}`;
-                const matchingDoc = snapshot.docs.find(doc => doc.id === docId);
+                const nowWatchingRef = doc(db, 'users', user.uid, 'nowWatching', docId);
+                const snap = await getDoc(nowWatchingRef);
 
-                if (matchingDoc) {
-                    // Buscar episódio com viewed:true da subcoleção
-                    const episodesRef = collection(matchingDoc.ref, 'episodes');
-                    const episodesSnap = await getDocs(episodesRef);
-
-                    for (const epDoc of episodesSnap.docs) {
-                        const epData = epDoc.data();
-                        if (epData.viewed === true) {
-                            setResumeData({ season: epData.season, episode: epData.episode });
-                            break;
-                        }
+                if (snap.exists()) {
+                    const data = snap.data();
+                    if (data.season && data.episode) {
+                        setResumeData({ season: data.season, episode: data.episode });
                     }
                 }
             } catch (error) {

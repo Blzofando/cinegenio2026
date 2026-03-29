@@ -2,6 +2,7 @@
 import { db } from '@/lib/firebase/client';
 import { collection, getDocs, doc as firestoreDoc } from 'firebase/firestore';
 import { getSeasonEpisodes } from './services/seriesMetadataCache';
+import type { ServerType } from '@/lib/videoPlayerUtils';
 
 export interface ResumeData {
     id: number;
@@ -14,7 +15,7 @@ export interface ResumeData {
     progress?: number; // Percentage watched
     timestamp?: number; // Current time in seconds
     duration?: number; // Total duration in seconds
-    lastServer?: 'videasy' | 'vidking';
+    lastServer?: ServerType;
     lastWatchedAt: any;
     viewed?: boolean; // Filter: only show viewed:true
 }

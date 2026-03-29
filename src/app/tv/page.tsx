@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { RadarItem } from '@/types';
 import TopTenCarousel from '@/components/shared/TopTenCarousel';
@@ -56,7 +56,7 @@ export default function TVPage() {
 
         loadPublicData();
 
-        // Load highlights
+        // Load highlights for hero carousel (Imperativo robusto)
         const loadHighlights = async () => {
             const items = await getHighlights('tv');
             setHighlights(items);
@@ -65,7 +65,7 @@ export default function TVPage() {
     }, []); // Only run on mount (F5 updates)
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-black via-gray-900 to-black text-white pb-16 md:pb-0">
+        <div className="min-h-screen bg-gradient-to-b from-black from-[20%] via-[#0a1024] via-[60%] to-black text-white pb-16 md:pb-0">
             <DashboardHeader />
             <MobileBottomNav />
 

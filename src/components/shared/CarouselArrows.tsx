@@ -25,17 +25,17 @@ export const CarouselArrows: React.FC<CarouselArrowsProps> = ({
                 variant="ghost"
                 size="icon"
                 onClick={onPrev}
-                className={`absolute left-0 top-0 ${containerClassName} z-20 w-16 bg-gradient-to-r from-black/80 to-transparent hover:from-black/90 transition-all rounded-none`}
+                className={`absolute left-2 md:left-4 top-1/2 -translate-y-1/2 ${containerClassName} z-40 w-12 h-12 bg-black/40 hover:bg-black/80 backdrop-blur-md transition-all rounded-full border border-white/10`}
             >
-                <ChevronLeft className="w-8 h-8 text-white drop-shadow-lg" />
+                <ChevronLeft className="w-8 h-8 text-white" />
             </Button>
             <Button
                 variant="ghost"
                 size="icon"
                 onClick={onNext}
-                className={`absolute right-0 top-0 ${containerClassName} z-20 w-16 bg-gradient-to-l from-black/80 to-transparent hover:from-black/90 transition-all rounded-none`}
+                className={`absolute right-2 md:right-4 top-1/2 -translate-y-1/2 ${containerClassName} z-40 w-12 h-12 bg-black/40 hover:bg-black/80 backdrop-blur-md transition-all rounded-full border border-white/10`}
             >
-                <ChevronRight className="w-8 h-8 text-white drop-shadow-lg" />
+                <ChevronRight className="w-8 h-8 text-white" />
             </Button>
         </>
     );

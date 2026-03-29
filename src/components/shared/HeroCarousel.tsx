@@ -82,9 +82,9 @@ const HeroCarousel: React.FC<HeroCarouselProps> = ({ items }) => {
                             className={`absolute inset-0 transition-opacity duration-1000 ${index === currentIndex ? 'opacity-100' : 'opacity-0'
                                 }`}
                         >
-                            {item.backdropUrl && (
+                            {(item.backdropUrl || item.posterUrl) && (
                                 <Image
-                                    src={item.backdropUrl}
+                                    src={item.backdropUrl || item.posterUrl}
                                     alt={item.title}
                                     fill
                                     className="object-cover object-top"
@@ -114,7 +114,18 @@ const HeroCarousel: React.FC<HeroCarouselProps> = ({ items }) => {
                                 />
                             </div>
                         ) : (
-                            <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold text-white drop-shadow-2xl">
+                            <h1 
+                                className="text-4xl md:text-6xl lg:text-7xl font-black tracking-tighter uppercase inline-block pb-2 drop-shadow-2xl"
+                                style={{
+                                    backgroundImage: `url(${currentItem.backdropUrl || currentItem.posterUrl})`,
+                                    backgroundSize: 'cover',
+                                    backgroundPosition: 'center',
+                                    color: 'transparent',
+                                    WebkitBackgroundClip: 'text',
+                                    backgroundClip: 'text',
+                                    WebkitTextStroke: '2px rgba(255,255,255,0.2)'
+                                }}
+                            >
                                 {currentItem.title}
                             </h1>
                         )}
@@ -191,25 +202,7 @@ const HeroCarousel: React.FC<HeroCarouselProps> = ({ items }) => {
                     </div>
                 </div>
 
-                {/* Navigation Arrows */}
-                 <Button
-                    variant="glass"
-                    size="icon"
-                    onClick={goToPrevious}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full opacity-0 group-hover:opacity-100 md:opacity-100 h-10 w-10 md:h-12 md:w-12"
-                    aria-label="Previous slide"
-                >
-                    <ChevronLeft className="w-6 h-6" />
-                </Button>
-                <Button
-                    variant="glass"
-                    size="icon"
-                    onClick={goToNext}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full opacity-0 group-hover:opacity-100 md:opacity-100 h-10 w-10 md:h-12 md:w-12"
-                    aria-label="Next slide"
-                >
-                    <ChevronRight className="w-6 h-6" />
-                </Button>
+                {/* As setas sumiram de acordo com o pedido, usuário se movimenta pelas dots no bottom */}
             </div >
 
             {/* Video Player Modal */}

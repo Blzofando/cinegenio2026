@@ -271,6 +271,11 @@ export interface DisplayableItem {
 
 // --- VIDEO PLAYER TYPES ---
 
+import type { ServerType } from '@/lib/videoPlayerUtils';
+export type { ServerType } from '@/lib/videoPlayerUtils';
+
+export type PlayerPhase = 'episode-select' | 'server-select' | 'playing';
+
 export interface VideoProgress {
   id: number;
   mediaType: 'movie' | 'tv';
@@ -280,7 +285,7 @@ export interface VideoProgress {
   lastUpdated: number;
   season?: number;
   episode?: number;
-  lastServer?: 'videasy' | 'vidking'; // Track which server was used
+  lastServer?: ServerType;
 }
 
 export interface PlayerEvent {

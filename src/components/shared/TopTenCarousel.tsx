@@ -91,17 +91,22 @@ const TopTenCarousel: React.FC<TopTenCarouselProps> = ({
                     onMouseEnter={() => setShowArrows(true)}
                     onMouseLeave={() => setShowArrows(false)}
                 >
-                    <CarouselArrows 
-                        onPrev={() => scroll('left')} 
-                        onNext={() => scroll('right')} 
-                        show={showArrows} 
-                    />
+                    <div className="absolute inset-y-0 left-0 right-0 z-50 pointer-events-none flex items-center">
+                        <div className="w-full relative pointer-events-auto">
+                            <CarouselArrows 
+                                onPrev={() => scroll('left')} 
+                                onNext={() => scroll('right')} 
+                                show={showArrows} 
+                                containerClassName="z-[60]"
+                            />
+                        </div>
+                    </div>
 
                     <div
                         ref={scrollRef}
-                        className="flex gap-2 sm:gap-3 md:gap-5 lg:gap-6 overflow-x-auto pb-4 scrollbar-hide scroll-smooth snap-x snap-mandatory px-0"
+                        className="flex gap-4 sm:gap-5 md:gap-7 lg:gap-8 overflow-x-auto pt-16 -mt-16 pb-12 -mb-8 scrollbar-hide scroll-smooth snap-x snap-mandatory px-0"
                     >
-                        {/* Left Spacer - Calibrado para compensar o GAP e alinhar o NÚMERO com o título */}
+                        {/* Left Spacer - Voltei para os tamanhos originais (centralizando de novo com os demais carrosseis) */}
                         <div className="flex-shrink-0 w-6 sm:w-7 md:w-7 lg:w-8 xl:w-12 snap-start" />
 
                         {items.map((item, index) => (
@@ -112,7 +117,7 @@ const TopTenCarousel: React.FC<TopTenCarouselProps> = ({
                                 <div className="relative">
                                     {/* Número Estilizado */}
                                     <div
-                                         className="absolute -left-4 md:-left-6 top-0 z-20 transition-all duration-300 group-hover/item:scale-110 pointer-events-none top-ten-number"
+                                         className="absolute -left-6 md:-left-8 top-0 z-20 pointer-events-none top-ten-number"
                                         style={{
                                             '--stroke-color': themeColor,
                                             '--glow-color': `${themeColor}80`,

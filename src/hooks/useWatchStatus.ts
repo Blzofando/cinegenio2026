@@ -45,7 +45,8 @@ export function useWatchStatus(itemId: number, mediaType: 'movie' | 'tv'): Watch
             }
 
             if (nowWatchingData) {
-                if (mediaType === 'movie' && nowWatchingData.timestamp && nowWatchingData.duration) {
+                // Se existe timestamp e duration (seja filme ou documento principal de série)
+                if (nowWatchingData.timestamp !== undefined && nowWatchingData.duration) {
                     const progress = (nowWatchingData.timestamp / nowWatchingData.duration) * 100;
 
                     if (progress >= 95) {
@@ -56,7 +57,7 @@ export function useWatchStatus(itemId: number, mediaType: 'movie' | 'tv'): Watch
                         setWatchStatus('new');
                     }
                 } else if (mediaType === 'tv') {
-                    // For series, if it exists in nowWatching, user has started watching
+                    // Fallback para séries: se o doc existe mas não tem progress no root ainda
                     setWatchStatus('resume');
                 } else {
                     setWatchStatus('new');

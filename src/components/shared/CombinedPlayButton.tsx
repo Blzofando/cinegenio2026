@@ -10,6 +10,7 @@ import { doc, getDoc, deleteDoc, collection, getDocs, updateDoc, setDoc } from '
 import RatingModal from './RatingModal';
 import EpisodeSelector from './EpisodeSelector';
 import { saveDualEpisodes } from '@/lib/dualEpisodeService';
+import { DEFAULT_SERVER } from '@/lib/videoPlayerUtils';
 import { Button } from '@/components/ui/Button';
 import { ModalWrapper } from '@/components/ui/Modal';
 import ConfirmModal from '@/components/ui/ConfirmModal';
@@ -211,7 +212,7 @@ const CombinedPlayButton: React.FC<CombinedPlayButtonProps> = ({
                     undefined,
                     { season, episode },
                     null,
-                    'videasy',
+                    DEFAULT_SERVER,
                     0,
                     0
                 );

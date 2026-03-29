@@ -1,6 +1,7 @@
 // Simple service to save "now watching" when player opens
 import { db } from '@/lib/firebase/client';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import type { ServerType } from '@/lib/videoPlayerUtils';
 
 export interface NowWatchingItem {
     id: number;
@@ -10,7 +11,7 @@ export interface NowWatchingItem {
     backdropUrl?: string; // 16:9 image for Continue Watching
     season?: number;
     episode?: number;
-    lastServer?: 'videasy' | 'vidking';
+    lastServer?: ServerType;
     timestamp?: number; // Current playback position in seconds
     duration?: number; // Total duration in seconds
     viewed?: boolean; // true = currently watching, false = prefetched next episode

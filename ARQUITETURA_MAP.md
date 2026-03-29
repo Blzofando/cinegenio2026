@@ -40,11 +40,15 @@
   - `SearchBar.tsx`: Agora utilizando o hook `useSearchBar.ts` para desacoplar a lógica de busca e formatação.
 - **Tipos e Interfaces (`src/types/index.ts`):**
   - `DisplayableItem`: Expandido para incluir `season` e `episode`, permitindo passagem de contexto de séries para o Player.
-- **VideoPlayer (Modular):**
-  - `VideoPlayerModal.tsx`: Orquestrador da UI do player. Agora utiliza `backdropUrl` para estética visual e sincroniza o estado inicial de séries (`season`/`episode`) com os metadados passados pelas páginas.
-  - `useVideoPlayerProgress.ts`: Hook para lógica de persistência e eventos do player.
-  - `PlayerFrame.tsx` & `ServerToggle.tsx`: Componentes atômicos de UI.
-  - `videoPlayerUtils.ts`: Gerador de URLs centralizado.
+- **VideoPlayer (Modular — Multi-Servidor V2):**
+  - `VideoPlayerModal.tsx`: Orquestrador com **3 fases** (`episode-select` → `server-select` → `playing`). Filmes na 1ª vez: seletor de servidor. Séries na 1ª vez: seletor de episódio → servidor. Retorno: direto pro player.
+  - `useVideoPlayerProgress.ts`: Hook que determina `initialPhase` baseado nos dados persistidos no Firebase. Carrega servidor, temporada/episódio salvos.
+  - `videoPlayerUtils.ts`: **`ServerType`** unificado (`videasy | vidking | embedplay | superflix | megaembed | embedmovies`). Constante `SERVERS` com metadados (nome, região). Função `getPlayerUrl()` centraliza geração de URLs para todos os servidores.
+  - `ServerSelector.tsx`: Grid de seleção de servidor dividido por região (Global/Brasil). Design premium com glassmorphism.
+  - `ServerToggle.tsx`: Dropdown sobre o player para troca rápida de servidor durante reprodução.
+  - `PlayerFrame.tsx`: Componente atômico do iframe.
+  - **Dependências em cascata:** `nowWatchingService.ts`, `dualEpisodeService.ts`, `resumeService.ts`, `videoProgressService.ts`, `CombinedPlayButton.tsx` — todos usam `ServerType` importado de `videoPlayerUtils.ts`.
+  - **Firebase Persistence:** Servidor, temporada, episódio e timestamp salvos em `users/{uid}/nowWatching/{docId}`. Ao retornar, o hook restaura automaticamente todas as escolhas.
 - **Sistema de Skeletons (Padronização de Loadings):**
   - Todas as páginas de categoria, sugestões e modais de detalhes agora utilizam componentes de Skeleton ou o componente `Loading` centralizado, garantindo uma transição visual suave e consistente.
 
@@ -55,15 +59,9 @@
   - `SearchBar.tsx`: Opacidade reforçada (`bg-white/20`) para maior destaque no novo design.
   - `favicon.ico`: Substituído por `icon.svg` via metadados globais.
 
-- **Sistema de Scrollbar (Estética Premium):**
-  - `globals.css`: Implementada scrollbar personalizada com `overflow-y: overlay`, fundo transparente e thumb que aparece apenas ao passar o mouse (`hover-reveal`), sobrepondo visualmente o header para evitar saltos de layout e manter a imersão.
-- **Padronização de Alinhamento (Visual Excellence):**
-  - Alinhamento horizontal rigoroso de todos os componentes (Dashboard, Filmes, Séries) utilizando a escala de padding `px-4 md:px-6 lg:px-8 xl:px-12`.
-  - Remoção de `max-w` e `mx-auto` do `DashboardHeader` e `HeroCarousel` para garantir alinhamento total com as bordas da tela e consistência visual em qualquer largura.
-  - Remoção de indicadores visuais de seção (barras roxas) em todos os tipos de carrosséis (`MovieCarousel`, `TopTenCarousel`, `ContinueWatchingCarousel`, `ComingSoonCarousel`, `CategoryCarousel`).
-  - Implementação da estratégia de `Spacers` (elementos invisíveis de padding) no início e fim dos containers de scroll para garantir que o carrossel inicie perfeitamente alinhado com o título e mantenha o padding final correto sem quebras de layout.
-  - Ajuste de offset nos carrosséis Top 10 para compensar números flutuantes e garantir alinhamento perfeito com os títulos.
+- **Sistema de Scrollbar (Hidden):**
+  - `globals.css`: Scrollbar completamente oculta em todos os navegadores usando `scrollbar-width: none` (Firefox) e `*::-webkit-scrollbar { display: none }` (Chrome/Safari/Edge). A funcionalidade de scroll permanece ativa, apenas a barra visual é removida.
 
 ---
 
-**Última Atualização:** 2026-03-20 por Antigravity (Refinamento de Design: Alinhamento de Carrosséis, Remoção de Barras de Título e Correção de Scroll)*
+**Última Atualização:** 2026-03-29 por Antigravity (Sistema Multi-Servidor V2 — 6 servidores com fluxo de reprodução em fases)*

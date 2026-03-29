@@ -2,6 +2,7 @@
 import { db } from '@/lib/firebase/client';
 import { doc, setDoc, serverTimestamp, collection, getDocs, deleteDoc } from 'firebase/firestore';
 import { filterStartedSeasons } from './services/seriesMetadataCache';
+import type { ServerType } from '@/lib/videoPlayerUtils';
 
 interface EpisodeInfo {
     season: number;
@@ -70,7 +71,7 @@ export const saveDualEpisodes = async (
     backdropUrl: string | undefined,
     currentEpisode: EpisodeInfo,
     nextEpisode: EpisodeInfo | null,
-    server: 'videasy' | 'vidking',
+    server: ServerType,
     timestamp: number = 0,
     currentDuration: number = 0
 ): Promise<void> => {
@@ -212,7 +213,9 @@ export const saveDualEpisodes = async (
  */
 export const swapToNextEpisode = async (
     userId: string,
-    seriesId: number
+    seriesId: number,
+    currentSeason: number,
+    currentEpisode: number
 ): Promise<void> => {
     const seriesDocRef = doc(db, 'users', userId, 'nowWatching', `tv_${seriesId}`);
     const episodesRef = collection(seriesDocRef, 'episodes');
@@ -225,8 +228,12 @@ export const swapToNextEpisode = async (
         data: doc.data() as EpisodeData
     }));
 
-    const current = episodes.find(ep => ep.data.viewed === true);
-    const next = episodes.find(ep => ep.data.viewed === false);
+    // Procure explicitamente o documento do episódio ATUAL que deve virar viewed=false
+    const currentId = `s${currentSeason}e${currentEpisode}`;
+    const current = episodes.find(ep => ep.id === currentId && ep.data.viewed === true);
+    
+    // O próximo é aquele que ainda está como viewed=false
+    const next = episodes.find(ep => ep.id !== currentId && ep.data.viewed === false);
 
     if (current && next) {
         await setDoc(current.ref, {

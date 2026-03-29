@@ -456,38 +456,23 @@ html, body {
     padding: 0;
     overflow-x: hidden;
     overscroll-behavior-y: contain;
-    /* Custom Scrollbar - Modern CineGênio Style */
-    scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+    /* Scrollbar Hidden - Oculta em todos os navegadores */
+    scrollbar-width: none; /* Firefox */
 }
 
-/* Chrome, Safari, and Edge */
-::-webkit-scrollbar {
-    width: 10px; /* Um pouco mais largo para facilitar o 'achado' do mouse na borda */
-    height: 10px;
+/* Chrome, Safari, Edge - Oculta scrollbar */
+*::-webkit-scrollbar {
+    display: none;
 }
 
-::-webkit-scrollbar-track {
-    background: transparent !important;
+/* Garante que todo elemento tenha scrollbar oculta (Firefox) */
+* {
+    scrollbar-width: none;
 }
 
-::-webkit-scrollbar-thumb {
-    background: transparent; /* 100% invisível por padrão */
-    border-radius: 10px;
-    border: 3px solid transparent; /* Cria um 'acolchoado' transparente */
-    background-clip: content-box;
-}
-
-::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.45) !important; /* Aparece no hover */
-    background-clip: content-box;
-}
-
-/* Forçar comportamento de overlay e remover cores de sistema */
+/* Mantém scroll funcional no html */
 html {
-    overflow-y: overlay;
-    scrollbar-width: thin;
-    scrollbar-color: transparent transparent; /* Para Firefox ficar invisível também */
+    overflow-y: auto;
 }
 
 /* responsividade desktop */
@@ -508,10 +493,21 @@ html {
 }
 
 .top-ten-number {
-    font-size: clamp(90px, 15vw, 140px);
+    font-size: clamp(65px, 12vw, 110px);
     line-height: 1;
     font-weight: 900;
     -webkit-text-stroke: var(--number-stroke-width, 2.5px) var(--stroke-color, #fff);
     -webkit-text-fill-color: transparent;
-    filter: drop-shadow(0 0 15px var(--glow-color, rgba(255,255,255,0.2)));
+    filter: drop-shadow(0 0 10px var(--glow-color, rgba(255,255,255,0.2)));
+    /* Animação suave para quando passar o mouse no card */
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transform-origin: bottom left; /* Mantém a âncora inferior esquerda ao dar zoom */
+}
+
+/* O Tailwind define a div card como .group\/item, então no hover do card geramos o efeito no número */
+.group\/item:hover .top-ten-number {
+    transform: scale(1.3) translateY(-5px);
+    /* Glow mais forte e com raio menor (drop-shadow com blur baixo mas várias vezes) */
+    filter: drop-shadow(0 0 4px var(--stroke-color)) drop-shadow(0 0 8px var(--stroke-color)) drop-shadow(0 0 15px var(--stroke-color));
+    -webkit-text-fill-color: rgba(255, 255, 255, 0.05); /* Sutil preenchimento branco para não ficar oco ao crescer */
 }

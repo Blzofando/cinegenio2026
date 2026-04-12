@@ -39,7 +39,7 @@ const RouletteModal: React.FC<RouletteModalProps> = ({ item, onClose, onSpinAgai
                         <Button 
                             variant="primary" 
                             size="lg" 
-                            fullWidth 
+                            className="w-full" 
                             onClick={() => onMarkAsWatched(item)}
                         >
                             Já Assisti
@@ -47,7 +47,7 @@ const RouletteModal: React.FC<RouletteModalProps> = ({ item, onClose, onSpinAgai
                         <Button 
                             variant="outline" 
                             size="lg" 
-                            fullWidth 
+                            className="w-full" 
                             onClick={onSpinAgain}
                         >
                             Rodar a roleta novamente

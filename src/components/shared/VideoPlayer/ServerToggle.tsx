@@ -74,7 +74,9 @@ const ServerToggle: React.FC<ServerToggleProps> = ({ server, onSelect }) => {
                 <span className="flex-1 flex items-center gap-2 font-medium">
                   {s.name}
                   {s.autoProgress && (
-                    <Zap className="w-3.5 h-3.5 text-yellow-500 fill-yellow-500/50" title="Salva Progresso Automaticamente" />
+                    <span title="Salva Progresso Automaticamente" className="flex items-center justify-center">
+                      <Zap className="w-3.5 h-3.5 text-yellow-500 fill-yellow-500/50" />
+                    </span>
                   )}
                 </span>
                 {isActive && <Check className="w-4 h-4 text-purple-400 flex-shrink-0" />}

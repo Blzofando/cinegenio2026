@@ -150,6 +150,16 @@ export const useVideoPlayerProgress = ({
     const initPlayback = useCallback(async () => {
         if (!user) return;
 
+        // ─── FALLBACK DE DURAÇÃO VIA TMDB (Filmes) ───
+        // Se o player ainda não enviou a duração via postMessage, usamos o runtime
+        // do TMDB convertido para segundos como valor inicial. Evita duration=0 no Firebase.
+        if (item.tmdbMediaType === 'movie' && movieDetails?.runtime && lastDurationRef.current === 0) {
+            const tmdbDurationSec = Math.round(movieDetails.runtime * 60);
+            lastDurationRef.current = tmdbDurationSec;
+            setLastDuration(tmdbDurationSec);
+            console.log('[initPlayback] Usando duração TMDB como fallback:', tmdbDurationSec, 's');
+        }
+
         await saveCurrentProgress(true); // Força um save assim que o play começa
 
         if (item.tmdbMediaType !== 'tv') return;
@@ -201,24 +211,82 @@ export const useVideoPlayerProgress = ({
         }
         
         if (user) {
-            // Tenta pescar o Tempo Atual (Time) e Duração (Duration)
-            const incomingTime = 
-                data?.currentTime ?? data?.data?.currentTime ??
-                data?.time ?? data?.data?.time ??
-                data?.seconds ?? data?.data?.seconds ??
-                data?.position ?? data?.data?.position ??
-                data?.pos ?? data?.data?.pos;
+            // ─── CAPTURA DO TIMESTAMP (tempo atual) ───
+            // Prioridade: 'timestamp' (Videasy/Vidking Global) → 'currentTime' → demais formatos
+            let rawTime: any =
+                data?.timestamp        ?? data?.data?.timestamp        ?? // 🌍 Videasy & Vidking (Global)
+                data?.currentTime      ?? data?.data?.currentTime      ?? // padrão HTML5
+                data?.time             ?? data?.data?.time             ??
+                data?.seconds          ?? data?.data?.seconds          ??
+                data?.position         ?? data?.data?.position         ??
+                data?.pos              ?? data?.data?.pos;
 
-            const incomingDuration = 
+            // 🛡️ GUARD Timestamp — Vidking envia Unix timestamp em ms (ex: 1774817707966).
+            // Posições de vídeo válidas são sempre < 86400s (24h). Descarta e tenta alternativas.
+            if (rawTime !== undefined && rawTime !== null && Number(rawTime) > 86400) {
+                rawTime =
+                    data?.currentTime ?? data?.data?.currentTime ??
+                    data?.ct          ?? data?.data?.ct          ??
+                    undefined;
+            }
+
+            const incomingTime = rawTime;
+
+            // ─── CAPTURA DA DURAÇÃO ───
+            let rawDuration: any =
                 data?.duration ?? data?.data?.duration ??
-                data?.length ?? data?.data?.length ??
-                data?.total ?? data?.data?.total;
+                data?.length   ?? data?.data?.length   ??
+                data?.total    ?? data?.data?.total;
+
+            // 🛡️ GUARD Duração — pode vir em ms (ex: 7200000 para 2h em vez de 7200s).
+            // Tenta converter ms→s. Se ainda > 86400 após conversão, descarta como inválido.
+            if (rawDuration !== undefined && rawDuration !== null) {
+                const rawDur = Number(rawDuration);
+                if (!isNaN(rawDur) && rawDur > 86400) {
+                    const converted = Math.floor(rawDur / 1000);
+                    rawDuration = (converted > 0 && converted <= 86400) ? converted : undefined;
+                }
+            }
+
+            const incomingDuration = rawDuration;
+
+            // ─── FALLBACK: calcular posição via progress% × duration ───
+            // Usado quando o timestamp foi descartado (Vidking Unix ms) mas
+            // `progress` (%) e `duration` chegam corretos — permite seek Vidking→Videasy.
+            let calculatedTime: number | undefined;
+            if (incomingTime === undefined) {
+                const rawProgress = data?.progress ?? data?.data?.progress;
+                const durForCalc = incomingDuration !== undefined
+                    ? Number(incomingDuration)
+                    : lastDurationRef.current;
+
+                if (rawProgress !== undefined && !isNaN(Number(rawProgress)) && durForCalc > 0) {
+                    const pct = Number(rawProgress);
+                    if (pct >= 0 && pct <= 100) {
+                        calculatedTime = Math.floor((pct / 100) * durForCalc);
+                    }
+                }
+            }
+
+            const resolvedTime = incomingTime ?? calculatedTime;
+
+            if (process.env.NODE_ENV === 'development') {
+                if (resolvedTime !== undefined || incomingDuration !== undefined) {
+                    console.log('[Player MSG]', {
+                        raw: data,
+                        resolvedTime,
+                        incomingDuration,
+                        fromProgress: incomingTime === undefined && calculatedTime !== undefined,
+                    });
+                }
+            }
 
             let shouldSave = false;
 
-            if (incomingTime !== undefined && incomingTime !== null && !isNaN(Number(incomingTime))) {
-                const ts = Math.floor(Number(incomingTime));
-                // Impede que um "0" solto sobreponha o tempo real caso chegue uma mensagem errática
+            // ─── PROCESSAR TIMESTAMP ───
+            if (resolvedTime !== undefined && resolvedTime !== null && !isNaN(Number(resolvedTime))) {
+                const ts = Math.floor(Number(resolvedTime));
+                // Impede que um "0" solto sobreponha o tempo real (mensagem errática)
                 if (ts > 0 || lastTimestampRef.current === 0) {
                     setLastTimestamp(ts);
                     lastTimestampRef.current = ts;
@@ -226,9 +294,12 @@ export const useVideoPlayerProgress = ({
                 }
             }
 
+            // ─── PROCESSAR DURAÇÃO ───
+            // Capturada INDEPENDENTEMENTE do timestamp — registrada desde o primeiro frame.
             if (incomingDuration !== undefined && incomingDuration !== null && !isNaN(Number(incomingDuration))) {
                 const dur = Math.floor(Number(incomingDuration));
-                if (dur > 0) {
+                // Salva apenas se: válido (>0) E diferente do atual (sem writes desnecessários)
+                if (dur > 0 && dur !== lastDurationRef.current) {
                     setLastDuration(dur);
                     lastDurationRef.current = dur;
                     shouldSave = true;
@@ -236,7 +307,9 @@ export const useVideoPlayerProgress = ({
             }
 
             if (shouldSave) {
-                const progress = lastDurationRef.current > 0 ? (lastTimestampRef.current / lastDurationRef.current) * 100 : 0;
+                const progress = lastDurationRef.current > 0
+                    ? (lastTimestampRef.current / lastDurationRef.current) * 100
+                    : 0;
 
                 // Trocar para próximo episódio (Séries)
                 if (item.tmdbMediaType === 'tv' && progress >= 90 && !hasSwappedRef.current) {
@@ -244,7 +317,7 @@ export const useVideoPlayerProgress = ({
                     await swapToNextEpisode(user.uid, item.id, selectedSeason, selectedEpisode);
                 }
 
-                // Salva o progresso (com forçamento no primeiro timestamp para fixar o ID no Firebase)
+                // Salva o progresso (forçado na primeira mensagem para fixar o doc no Firebase)
                 await saveCurrentProgress(lastSaveTimeRef.current === 0);
             }
         }

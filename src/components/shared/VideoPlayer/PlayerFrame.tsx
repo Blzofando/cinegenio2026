@@ -19,7 +19,7 @@ const PlayerFrame: React.FC<PlayerFrameProps> = ({
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
     >
-      <div className="relative w-full rounded-2xl overflow-hidden aspect-video bg-black/50">
+      <div className="relative w-full rounded-2xl overflow-hidden bg-black/50" style={{ aspectRatio: '16/9', maxHeight: 'calc(95dvh - 80px)' }}>
         {playerUrl ? (
           <iframe
             src={playerUrl}

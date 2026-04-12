@@ -49,6 +49,7 @@
   - `PlayerFrame.tsx`: Componente atômico do iframe.
   - **Dependências em cascata:** `nowWatchingService.ts`, `dualEpisodeService.ts`, `resumeService.ts`, `videoProgressService.ts`, `CombinedPlayButton.tsx` — todos usam `ServerType` importado de `videoPlayerUtils.ts`.
   - **Firebase Persistence:** Servidor, temporada, episódio e timestamp salvos em `users/{uid}/nowWatching/{docId}`. Ao retornar, o hook restaura automaticamente todas as escolhas.
+  - **Parsing de Mensagens (postMessage):** `useVideoPlayerProgress.ts` interpreta mensagens de todos os players. Prioridade de campos: `timestamp` (Videasy/Vidking — Global) → `currentTime` (HTML5) → demais. A duração é capturada INDEPENDENTEMENTE do timestamp, garantindo registro desde o primeiro frame. Fallback de duração via `movieDetails.runtime` (TMDB) ao iniciar filmes.
 - **Sistema de Skeletons (Padronização de Loadings):**
   - Todas as páginas de categoria, sugestões e modais de detalhes agora utilizam componentes de Skeleton ou o componente `Loading` centralizado, garantindo uma transição visual suave e consistente.
 
@@ -62,6 +63,12 @@
 - **Sistema de Scrollbar (Hidden):**
   - `globals.css`: Scrollbar completamente oculta em todos os navegadores usando `scrollbar-width: none` (Firefox) e `*::-webkit-scrollbar { display: none }` (Chrome/Safari/Edge). A funcionalidade de scroll permanece ativa, apenas a barra visual é removida.
 
+
+- **Página de Perfil (`/dashboard/profile`) — Design "Noir Dossier":**
+  - `useProfileData.ts`: Hook que agrega watchlist (tempo real via `onSnapshot`) e coleção de assistidos (leitura paralela dos 4 docs `ratings/{amei|gostei|meh|nao_gostei}`) com deduplicação por `mediaType_id`.
+  - `profile/page.tsx`: Redesenhada com estética "Noir Dossier": hero cinematográfico com avatar + badges; grid bento com **folder ASSISTIDOS** (textura papel dourado), **folder WATCHLIST** (textura metal escuro), **painel PERFIL IA** (estatísticas derivadas dos dados reais) e **feed de atividade recente**. Dados 100% reais do Firebase via `useProfileData`.
+  - `globals.css`: Classes `.paper-texture`, `.metal-texture`, `.noir-shadow`, `.poster-shadow`, `.folder-tab-paper`, `.folder-tab-metal`, `.folder-glow-purple` adicionadas para suportar o design Noir Dossier.
+
 ---
 
-**Última Atualização:** 2026-03-29 por Antigravity (Sistema Multi-Servidor V2 — 6 servidores com fluxo de reprodução em fases)*
+**Última Atualização:** 2026-04-12 por Antigravity (Perfil: redesign completo "Noir Dossier" — hero cinematográfico, folders com textura papel/metal, Perfil IA, feed de atividade com dados reais do Firebase)

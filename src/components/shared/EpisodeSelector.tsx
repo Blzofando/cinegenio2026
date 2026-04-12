@@ -113,7 +113,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({ showId, onSelect, onC
                 )}
             </ModalHeader>
 
-            <ModalBody className="flex-1 overflow-y-auto p-4 md:p-6 scrollbar-hide">
+            <ModalBody className="flex-1 overflow-y-auto p-3 md:p-4 scrollbar-hide">
                 {step === 1 && (
                     <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 md:gap-4">
                         {seasons.map((season) => (
@@ -276,14 +276,14 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({ showId, onSelect, onC
                 )}
             </ModalBody>
 
-            <div className="p-4 md:p-6 border-t border-white/5 bg-black/50 backdrop-blur-lg">
-                <div className="flex gap-2 md:gap-3">
+            <div className="p-2 md:p-3 border-t border-white/5 bg-black/50 backdrop-blur-lg">
+                <div className="flex gap-2">
                     {step === 2 && (
                         <>
                             <Button
                                 onClick={() => setStep(1)}
                                 variant="secondary"
-                                className="px-6"
+                                className="px-4 text-sm"
                             >
                                 ← Voltar
                             </Button>
@@ -291,18 +291,17 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({ showId, onSelect, onC
                                 onClick={handleWatch}
                                 disabled={!selectedEpisode}
                                 variant="purple"
-                                className="flex-1 text-base md:text-lg"
+                                className="flex-1 text-sm"
                                 rightIcon={Play}
                             >
-                                <span className="hidden xs:inline">Assistir Agora</span>
-                                <span className="xs:hidden">Assistir</span>
+                                Assistir Agora
                             </Button>
                         </>
                     )}
                     <Button
                         onClick={onClose}
                         variant="ghost"
-                        className="px-6 text-gray-400 hover:text-white"
+                        className="px-4 text-sm text-gray-400 hover:text-white"
                     >
                         Cancelar
                     </Button>

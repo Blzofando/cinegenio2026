@@ -28,23 +28,25 @@ export const getPlayerUrl = (
   item: DisplayableItem,
   server: ServerType,
   selectedSeason?: number,
-  selectedEpisode?: number
+  selectedEpisode?: number,
+  startTime?: number  // Posição inicial em segundos (para retomar/trocar servidor)
 ): string => {
   const id = item.id;
   const isTV = item.tmdbMediaType === 'tv';
   const s = selectedSeason;
   const e = selectedEpisode;
+  const seek = startTime && startTime > 0 ? Math.floor(startTime) : null;
 
   switch (server) {
     case 'videasy':
       return isTV
         ? `https://player.videasy.net/tv/${id}/${s}/${e}`
-        : `https://player.videasy.net/movie/${id}`;
+        : `https://player.videasy.net/movie/${id}${seek ? `?progress=${seek}` : ''}`;
 
     case 'vidking':
       return isTV
         ? `https://www.vidking.net/embed/tv/${id}/${s}/${e}`
-        : `https://www.vidking.net/embed/movie/${id}`;
+        : `https://www.vidking.net/embed/movie/${id}${seek ? `?t=${seek}` : ''}`;
 
     case 'embedplay':
       return isTV
@@ -69,6 +71,6 @@ export const getPlayerUrl = (
     default:
       return isTV
         ? `https://player.videasy.net/tv/${id}/${s}/${e}`
-        : `https://player.videasy.net/movie/${id}`;
+        : `https://player.videasy.net/movie/${id}${seek ? `?progress=${seek}` : ''}`;
   }
 };
